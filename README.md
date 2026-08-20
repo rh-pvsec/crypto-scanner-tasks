@@ -6,8 +6,8 @@ These tasks use [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-
 
 ## Tasks
 
-- **[sast-crypto-scan](task/sast-crypto-scan/)** — Crypto scan using a shared workspace.
-- **[sast-crypto-scan-oci-ta](task/sast-crypto-scan-oci-ta/)** — Crypto scan using Trusted Artifacts for source input.
+* **[sast-crypto-scan](task/sast-crypto-scan/)** — Crypto scan using a shared workspace.
+* **[sast-crypto-scan-oci-ta](task/sast-crypto-scan-oci-ta/)** — Crypto scan using Trusted Artifacts for source input.
 
 ## Fullsend
 
