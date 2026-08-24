@@ -1,0 +1,10 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "packageRules": [
+    {
+      "description": "Automerge Konflux pipeline references",
+      "matchFileNames": [".tekton/**"],
+      "automerge": true
+    }
+  ]
+}
