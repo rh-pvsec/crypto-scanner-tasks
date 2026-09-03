@@ -40,11 +40,6 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
         operator: in
         values:
         - "false"
-      when:
-      - input: $(params.skip-checks)
-        operator: in
-        values:
-        - "false"
 ```
 
 A cbom will be uploaded as a trusted artifact.
