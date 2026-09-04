@@ -84,13 +84,14 @@ spec:
           ADDITIONAL_RULES_IMAGE="quay.io/exd-guild-security/crypto-rules-image:latest"
           ROBOT_ACCOUNT="exd-guild-security+konflux_crypto_rules_pull"
         elif [[ "${CONSOLE}" =~ ^(stone-stage-p01)$ ]] ; then
-           ADDITIONAL_RULES_IMAGE="default-route-openshift-image-registry.apps.stone-stage-p01.hpmt.p1.openshiftapps.com/tmp-sguarino/crypto-rules-image:latest"
-           ROBOT_ACCOUNT=""
+          ADDITIONAL_RULES_IMAGE="default-route-openshift-image-registry.apps.stone-stage-p01.hpmt.p1.openshiftapps.com/tmp-sguarino/crypto-rules-image:latest"
+          ROBOT_ACCOUNT=""
         else
           echo "No ADDITIONAL_RULES_IMAGE set, and no supported cluster detected"
           exit 0
         fi
 
+        # If we need authentication
         if [ -n "${ROBOT_ACCOUNT}" ] ; then
           REGISTRY_HOSTNAME=${ADDITIONAL_RULES_IMAGE%%/*}
           TOKEN=$(cat /var/run/secrets/tokens/quay-token)
