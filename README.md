@@ -45,12 +45,27 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
 A cbom will be uploaded as a trusted artifact.
 
 > [!NOTE]  
-> Proprietary rules from ScanOSS are by now supported only on the following clusters:
+> OpenSource rules are supported on every Konflux cluster, while proprietary rules from ScanOSS are by now supported only on the following clusters:
 > - stone-stage-p01
-
-> [!NOTE]  
-> If you need to use proprietary rules on another Red Hat cluster, please fill a Jira in PVSEC project.
-> If not, you can still use this task with the provided Open Source rules.
+>
+> If you need to use proprietary rules on the following Red Hat clusters before it gets onboearded:
+> - kflux-prd-rh03
+> - kflux-prd-rh02
+> - kflux-prd-rh01
+> - stone-prod-p02
+> - stone-prod-p01
+> - kflux-ocp-p01
+> - kflux-rhel-p01
+> - kflux-osp-p01
+> - stone-stg-rh01
+> 
+> please, fill a Jira in PVSEC project indicating:
+> - Tenant
+> - Component build service account (ex, build-pipeline-component-a)
+> - OIDC provider, you can get it by runnig:
+> ```
+> kubectl get --raw /.well-known/openid-configuration | jq -r .issuer
+> ```
 
 ## Fullsend
 
