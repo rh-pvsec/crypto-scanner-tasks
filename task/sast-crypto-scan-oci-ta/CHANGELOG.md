@@ -2,6 +2,12 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.1.1
+
+### Added
+
+- Support for pulling the proprietary rules from the internal openshift registry when invoked in `stone-stage-p01`
+
 ## 0.1
 
 ### Added

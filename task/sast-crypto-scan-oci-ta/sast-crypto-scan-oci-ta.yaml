@@ -5,9 +5,9 @@ metadata:
   name: sast-crypto-scan-oci-ta
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
-    tekton.dev/tags: "konflux"
+    tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.1"
+    app.kubernetes.io/version: "0.1.1"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
