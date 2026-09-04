@@ -32,7 +32,7 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
         - name: name
           value: sast-crypto-scan-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/task-sast-crypto-scan-oci-ta:latest
+          value: quay.io/konflux-ci/task-sast-crypto-scan-oci-ta:0.1.1
         - name: kind
           value: task
       when:
