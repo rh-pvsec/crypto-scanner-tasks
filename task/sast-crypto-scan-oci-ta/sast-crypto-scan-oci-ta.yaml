@@ -5,9 +5,9 @@ metadata:
   name: sast-crypto-scan-oci-ta
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
-    tekton.dev/tags: "konflux"
+    tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.1"
+    app.kubernetes.io/version: "0.1.1"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -108,43 +108,49 @@ spec:
         CONSOLE=$(oc whoami --show-console | sed -E 's|^https://console-openshift-console\.apps\.([^.:]*)\..*:?.*$|\1|')
         echo "Running on: $CONSOLE"
 
-        if [[ "${CONSOLE}" =~ ^(kflux-prd-rh03|kflux-prd-rh02|kflux-prd-rh01|stone-prod-p02|stone-prod-p01|kflux-ocp-p01|kflux-rhel-p01|kflux-osp-p01|stone-stg-rh01|stone-stage-p01)$ ]] ; then
+        if [[ "${CONSOLE}" =~ ^(kflux-prd-rh03|kflux-prd-rh02|kflux-prd-rh01|stone-prod-p02|stone-prod-p01|kflux-ocp-p01|kflux-rhel-p01|kflux-osp-p01|stone-stg-rh01)$ ]] ; then
           # This unpinned image contain the latest rolling rules
           ADDITIONAL_RULES_IMAGE="quay.io/exd-guild-security/crypto-rules-image:latest"
           ROBOT_ACCOUNT="exd-guild-security+konflux_crypto_rules_pull"
+        elif [[ "${CONSOLE}" =~ ^(stone-stage-p01)$ ]] ; then
+          ADDITIONAL_RULES_IMAGE="default-route-openshift-image-registry.apps.stone-stage-p01.hpmt.p1.openshiftapps.com/tmp-sguarino/crypto-rules-image:latest"
+          ROBOT_ACCOUNT=""
         else
           echo "No ADDITIONAL_RULES_IMAGE set, and no supported cluster detected"
           exit 0
         fi
 
-        REGISTRY_HOSTNAME=${ADDITIONAL_RULES_IMAGE%%/*}
-        TOKEN=$(cat /var/run/secrets/tokens/quay-token)
-        if [ -z "${TOKEN}" ]; then
-          echo "No bound token available"
-          exit 1
+        # If we need authentication
+        if [ -n "${ROBOT_ACCOUNT}" ] ; then
+          REGISTRY_HOSTNAME=${ADDITIONAL_RULES_IMAGE%%/*}
+          TOKEN=$(cat /var/run/secrets/tokens/quay-token)
+
+          if [ -z "${TOKEN}" ]; then
+            echo "No bound token available"
+            exit 1
+          fi
+
+          SL_TOKEN=$(curl -s --fail \
+            --user "${ROBOT_ACCOUNT}:${TOKEN}" \
+            "https://${REGISTRY_HOSTNAME}/oauth2/federation/robot/token" \
+            | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
+
+          if [ -n "${SL_TOKEN}" ] ; then
+            export XDG_RUNTIME_DIR=/tmp/oc-run
+            mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
+            oc registry login --registry="${REGISTRY_HOSTNAME}" --auth-basic="${ROBOT_ACCOUNT}:${SL_TOKEN}"
+          else
+            echo "WARNING: Unable to authenticate to $REGISTRY_HOSTNAME with $ROBOT_ACCOUNT and bound token"
+            echo "Falling back to use only Open Source Rules"
+            exit 0
+          fi
         fi
-
-        SL_TOKEN=$(curl -s --fail \
-          --user "${ROBOT_ACCOUNT}:${TOKEN}" \
-          "https://${REGISTRY_HOSTNAME}/oauth2/federation/robot/token" \
-          | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
-
-        if [ -z "${SL_TOKEN}" ] ; then
-          echo "Unable to authenticate to $REGISTRY_HOSTNAME with $ROBOT_ACCOUNT and bound token"
-          exit 0
-        fi
-
-        export XDG_RUNTIME_DIR=/tmp/oc-run
-        mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
-
-        echo "About to download image ${ADDITIONAL_RULES_IMAGE}"
-        oc registry login --registry="${REGISTRY_HOSTNAME}" --auth-basic="${ROBOT_ACCOUNT}:${SL_TOKEN}"
 
         mkdir /workspace/rules
+        echo "About to download image ${ADDITIONAL_RULES_IMAGE}"
         retry oc image extract "${ADDITIONAL_RULES_IMAGE}" --path="/rules/:/workspace/rules"
 
     - name: rh-crypto-scanner
-      # TEST IMAGE, it should be stored under konflux-ci and pinned
       image: quay.io/exd-guild-security/crypto-finder-image:latest
       workingDir: /var/workdir/source
       env:
@@ -231,6 +237,7 @@ spec:
         requests:
           cpu: "1"
           memory: 4Gi
+
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
       when:
