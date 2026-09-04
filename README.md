@@ -8,7 +8,7 @@ These tasks use [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-
 
 * **[sast-crypto-scan](task/sast-crypto-scan/)** — Crypto scan task using a shared workspace.
   * published in quay.io/konflux-ci/task-sast-crypto-scan
-- **[sast-crypto-scan-oci-ta](task/sast-crypto-scan-oci-ta/)** — Crypto scan task using Trusted Artifacts for source input.
+* **[sast-crypto-scan-oci-ta](task/sast-crypto-scan-oci-ta/)** — Crypto scan task using Trusted Artifacts for source input.
   * published in quay.io/konflux-ci/task-sast-crypto-scan-oci-ta
 
 ## Usage
@@ -44,7 +44,7 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
 
 A cbom will be uploaded as a trusted artifact.
 
-> [!NOTE]  
+> [!NOTE]
 > OpenSource rules are supported on every Konflux cluster, while proprietary rules from ScanOSS are by now supported only on the following clusters:
 > - stone-stage-p01
 >
