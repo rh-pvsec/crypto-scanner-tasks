@@ -101,8 +101,6 @@ spec:
         - name: bound-token
           mountPath: /var/run/secrets/tokens
           readOnly: true
-      securityContext:
-        runAsUser: 0
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
@@ -122,14 +120,8 @@ spec:
           # Use internal mirrored image
           ADDITIONAL_RULES_IMAGE="image-registry.openshift-image-registry.svc:5000/tmp-sguarino/${IMAGE}"
           ROBOT_ACCOUNT=""
-
-          # Trust internal ca bundle to connect to internal openshift registry          
-          ca_bundle=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
-          if [ -f "$ca_bundle" ]; then
-            echo "INFO: Using mounted CA bundle: $ca_bundle"
-            cp -vf $ca_bundle /etc/pki/ca-trust/source/anchors
-            update-ca-trust
-          fi
+          # Trust internal ca bundle to connect to internal openshift registry
+          export SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
         else
           echo "No supported cluster detected"
           exit 0
