@@ -7,15 +7,16 @@ These tasks use [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-
 ## Tasks
 
 * **[sast-crypto-scan](task/sast-crypto-scan/)** — Crypto scan task using a shared workspace.
-  * published in quay.io/konflux-ci/task-sast-crypto-scan
+  * published in quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan
 * **[sast-crypto-scan-oci-ta](task/sast-crypto-scan-oci-ta/)** — Crypto scan task using Trusted Artifacts for source input.
-  * published in quay.io/konflux-ci/task-sast-crypto-scan-oci-ta
+  * published in quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan-oci-ta
 
 ## Usage
 
 Include one flavor of this task by editing your pipeline (`.tekton/<component name>-pull-request.yaml` and `.tekton/<component name>-push.yaml`) and adding the following lines:
 
 ```yaml
+  tasks:
     - name: sast-crypto-scan
       params:
       - name: image-digest
@@ -32,7 +33,7 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
         - name: name
           value: sast-crypto-scan-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/task-sast-crypto-scan-oci-ta:0.1.1
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan-oci-ta:0.1.1
         - name: kind
           value: task
       when:
@@ -45,18 +46,18 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
 A cbom will be uploaded as a trusted artifact.
 
 > [!NOTE]
-> OpenSource rules are supported on every Konflux cluster, while proprietary rules from ScanOSS are by now supported only on the following clusters:
+> OpenSource rules are supported on every Konflux cluster, while proprietary rules from ScanOSS are by now supported only on the following RedHat owned clusters:
 > - stone-stage-p01
 >
-> If you need to use proprietary rules on the following Red Hat clusters before it gets onboearded:
-> - kflux-prd-rh03
-> - kflux-prd-rh02
+> If you need to use proprietary rules on the following Red Hat clusters before it gets onboarded:
 > - kflux-prd-rh01
-> - stone-prod-p02
+> - kflux-prd-rh02
+> - kflux-prd-rh03
 > - stone-prod-p01
+> - stone-prod-p02
+> - kflux-osp-p01
 > - kflux-ocp-p01
 > - kflux-rhel-p01
-> - kflux-osp-p01
 > - stone-stg-rh01
 > 
 > please, fill a Jira in PVSEC project indicating:
