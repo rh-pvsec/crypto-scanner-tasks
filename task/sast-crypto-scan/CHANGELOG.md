@@ -2,6 +2,13 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.1.2
+
+### Added
+
+- Improve error handling when authenticating to quay.io using short lived token
+- The task exits with a warning when the scan is expected to use proprietary rules but is unable to do so
+
 ## 0.1.1
 
 ### Added
