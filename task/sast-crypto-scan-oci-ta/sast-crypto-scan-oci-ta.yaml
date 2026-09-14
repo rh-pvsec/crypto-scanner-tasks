@@ -153,7 +153,7 @@ spec:
           else
             echo "WARNING: Unable to authenticate to $REGISTRY_HOSTNAME with $ROBOT_ACCOUNT and bound token"
             echo "Falling back to use only Open Source Rules"
-            TEST_OUTPUT=$(echo "{\"result\":\"SUCCESS\",\"timestamp\":\"$(date -u --iso-8601=seconds)\",\"failures\":0,\"successes\":0,\"warnings\":1}")
+            TEST_OUTPUT=$(echo "{\"result\":\"WARNING\",\"timestamp\":\"$(date -u --iso-8601=seconds)\",\"failures\":0,\"successes\":0,\"warnings\":1}")
             echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
             exit 0
           fi

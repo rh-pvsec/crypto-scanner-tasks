@@ -4,7 +4,7 @@
 
 ## 0.1.2
 
-### Added
+### Changed
 
 - Improve error handling when authenticating to quay.io using short lived token
 - The task exits with a warning when the scan is expected to use proprietary rules but is unable to do so
