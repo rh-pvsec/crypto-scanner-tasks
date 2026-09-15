@@ -143,7 +143,7 @@ spec:
           SL_TOKEN=$(curl -s --fail \
             --user "${ROBOT_ACCOUNT}:${TOKEN}" \
             "https://${REGISTRY_HOSTNAME}/oauth2/federation/robot/token" \
-            | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])' 2> /dev/null)
+            | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
           set -e
 
           if [ -n "${SL_TOKEN}" ] ; then
