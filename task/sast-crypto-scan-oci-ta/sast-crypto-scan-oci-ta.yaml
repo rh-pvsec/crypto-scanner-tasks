@@ -77,10 +77,6 @@ spec:
   steps:
     - name: use-trusted-artifact
       image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:d6d6048bdb5a73697ff88734a3f33c54193405b901d3f5192b8251a878623906
-      when:
-        - input: "$(params.SKIP_SBOM_GENERATION)"
-          operator: in
-          values: [ "false" ]
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
@@ -95,8 +91,8 @@ spec:
       image: quay.io/konflux-ci/task-runner:2.1.0@sha256:c34c933c269e2401bb042fe69e2999cf288331b6586d4f4eca9c845270d9b1f9
       when:
         - input: "$(params.SKIP_SBOM_GENERATION)"
-          operator: in
-          values: [ "false" ]
+          operator: notin
+          values: [ "true" ]
       volumeMounts:
         - name: bound-token
           mountPath: /var/run/secrets/tokens
@@ -153,8 +149,8 @@ spec:
           else
             echo "WARNING: Unable to authenticate to $REGISTRY_HOSTNAME with $ROBOT_ACCOUNT and bound token"
             echo "Falling back to use only Open Source Rules"
-            TEST_OUTPUT=$(echo "{\"result\":\"WARNING\",\"timestamp\":\"$(date -u --iso-8601=seconds)\",\"failures\":0,\"successes\":0,\"warnings\":1}")
-            echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
+            mkdir -p "/var/workdir/$(context.task.name)/"
+            echo -n 1 > "/var/workdir/$(context.task.name)/warnings"
             exit 0
           fi
         fi
@@ -218,8 +214,7 @@ spec:
           fi
         done
 
-        WARNINGS=0
-        if [ "${SKIP_SBOM_GENERATION}" != "false" ]; then
+        if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
           RESULT="SKIPPED"
           SUCCESSES="0"
           FAILURES="0"
@@ -232,11 +227,10 @@ spec:
           RESULT="SUCCESS"
           SUCCESSES="1"
           FAILURES="0"
-          if [ -f $(results.TEST_OUTPUT.path) ]; then
-            WARNINGS=$(sed -e 's/^.*warnings":\([[:digit:]]*\).*$/\1/p;d' $(results.TEST_OUTPUT.path))
+          if [ -f "/var/workdir/$(context.task.name)/warnings" ]; then
+            WARNINGS=$(cat "/var/workdir/$(context.task.name)/warnings")
             RESULT="WARNING"
           fi
-
           echo "Running crypto scanner on the specified targets"
           crypto-finder \
             scan \
@@ -246,7 +240,7 @@ spec:
             --timeout "${SCAN_TIMEOUT}" \
             "${ALL_TARGETS[@]}" > "${OUTPUT_FILE}"
         fi
-        TEST_OUTPUT=$(echo "{\"result\":\"${RESULT}\",\"timestamp\":\"$(date -u --iso-8601=seconds)\",\"failures\":${FAILURES},\"successes\":${SUCCESSES},\"warnings\":${WARNINGS}}")
+        TEST_OUTPUT=$(echo "{\"result\":\"${RESULT}\",\"timestamp\":\"$(date -u --iso-8601=seconds)\",\"failures\":${FAILURES},\"successes\":${SUCCESSES},\"warnings\":${WARNINGS:-0}}")
         echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
       computeResources:
         limits:
@@ -258,10 +252,6 @@ spec:
 
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
-      when:
-        - input: "$(params.SKIP_SBOM_GENERATION)"
-          operator: in
-          values: [ "false" ]
       workingDir: /var/workdir/source
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
@@ -273,12 +263,19 @@ spec:
           value: $(params.image-url)
         - name: IMAGE_DIGEST
           value: $(params.image-digest)
+        - name: SKIP_SBOM_GENERATION
+          value: $(params.SKIP_SBOM_GENERATION)
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
 
         if [ -z "${IMAGE_URL}" ] || [ -z "${IMAGE_DIGEST}" ]; then
           echo 'No image-url or image-digest param provided. Skipping upload.'
+          exit 0
+        fi
+
+        if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
+          echo 'Skipping SBOM generation. Skipping upload.'
           exit 0
         fi
 

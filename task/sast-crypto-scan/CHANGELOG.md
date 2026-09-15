@@ -8,6 +8,7 @@
 
 - Improve error handling when authenticating to quay.io using short lived token
 - The task exits with a warning when the scan is expected to use proprietary rules but is unable to do so
+- Manage SKIP_SBOM_GENERATION flow at script level
 
 ## 0.1.1
 
