@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.1.1"
+    app.kubernetes.io/version: "0.1.2"
 spec:
   description: >-
     The sast-crypto-scan task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -66,8 +66,8 @@ spec:
       image: quay.io/konflux-ci/task-runner:2.1.0@sha256:c34c933c269e2401bb042fe69e2999cf288331b6586d4f4eca9c845270d9b1f9
       when:
         - input: "$(params.SKIP_SBOM_GENERATION)"
-          operator: in
-          values: [ "false" ]
+          operator: notin
+          values: [ "true" ]
       volumeMounts:
         - name: bound-token
           mountPath: /var/run/secrets/tokens
@@ -76,18 +76,20 @@ spec:
         #!/usr/bin/env bash
         set -euo pipefail
 
-        CONSOLE=$(oc whoami --show-console | sed -E 's|^https://console-openshift-console\.apps\.([^.:]*)\..*:?.*$|\1|')
-        echo "Running on: $CONSOLE"
+        CLUSTER=$(oc whoami --show-console | sed -E 's|^https://console-openshift-console\.apps\.([^.:]*)\..*:?.*$|\1|')
+        echo "Running on: $CLUSTER"
 
         # This unpinned image contain the latest rolling version of the rules
         IMAGE="crypto-rules-image:latest"
 
         # There are two ways of accessing the proprietary crypto-rules-image depending on the cluster
-        if [[ "${CONSOLE}" =~ ^(kflux-prd-rh03|kflux-prd-rh02|kflux-prd-rh01|stone-prod-p02|stone-prod-p01|kflux-ocp-p01|kflux-rhel-p01|kflux-osp-p01|stone-stg-rh01)$ ]] ; then
+        if [[ "${CLUSTER}" =~ ^(kflux-prd-rh03|kflux-prd-rh02|kflux-prd-rh01|stone-prod-p02|stone-prod-p01|kflux-ocp-p01|kflux-rhel-p01|kflux-osp-p01|stone-stg-rh01)$ ]] ; then
+          echo "Using image from quay.io using robot federated account"
           # Use bounded token with quay.io federated robot account
           ADDITIONAL_RULES_IMAGE="quay.io/exd-guild-security/${IMAGE}"
           ROBOT_ACCOUNT="exd-guild-security+konflux_crypto_rules_pull"
-        elif [[ "${CONSOLE}" =~ ^(stone-stage-p01)$ ]] ; then
+        elif [[ "${CLUSTER}" =~ ^(stone-stage-p01)$ ]] ; then
+          echo "Using image from internal openshift registry"
           # Use internal mirrored image
           ADDITIONAL_RULES_IMAGE="image-registry.openshift-image-registry.svc:5000/tmp-sguarino/${IMAGE}"
           ROBOT_ACCOUNT=""
@@ -107,10 +109,12 @@ spec:
             exit 1
           fi
 
+          set +e
           SL_TOKEN=$(curl -s --fail \
             --user "${ROBOT_ACCOUNT}:${TOKEN}" \
             "https://${REGISTRY_HOSTNAME}/oauth2/federation/robot/token" \
             | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
+          set -e
 
           if [ -n "${SL_TOKEN}" ] ; then
             export XDG_RUNTIME_DIR=/tmp/oc-run
@@ -119,6 +123,8 @@ spec:
           else
             echo "WARNING: Unable to authenticate to $REGISTRY_HOSTNAME with $ROBOT_ACCOUNT and bound token"
             echo "Falling back to use only Open Source Rules"
+            mkdir -p "$(workspaces.workspace.path)/$(context.task.name)"
+            echo -n 1 > "$(workspaces.workspace.path)/$(context.task.name)/warnings"
             exit 0
           fi
         fi
@@ -184,7 +190,7 @@ spec:
           fi
         done
 
-        if [ "${SKIP_SBOM_GENERATION}" != "false" ]; then
+        if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
           RESULT="SKIPPED"
           SUCCESSES="0"
           FAILURES="0"
@@ -197,6 +203,11 @@ spec:
           RESULT="SUCCESS"
           SUCCESSES="1"
           FAILURES="0"
+          if [ -f "$(workspaces.workspace.path)/$(context.task.name)/warnings" ]; then
+            WARNINGS=$(cat "$(workspaces.workspace.path)/$(context.task.name)/warnings")
+            RESULT="WARNING"
+          fi
+
           echo "Running crypto scanner on the specified targets"
           crypto-finder \
             scan \
@@ -206,9 +217,9 @@ spec:
             --timeout "${SCAN_TIMEOUT}" \
             "${ALL_TARGETS[@]}" > "${OUTPUT_FILE}"
         fi
-        TEST_OUTPUT=$(echo "{\"result\":\"${RESULT}\",\"timestamp\":\"$(date -u --iso-8601=seconds)\",\"failures\":${FAILURES},\"successes\":${SUCCESSES},\"warnings\":0}")
+
+        TEST_OUTPUT=$(echo "{\"result\":\"${RESULT}\",\"timestamp\":\"$(date -u --iso-8601=seconds)\",\"failures\":${FAILURES},\"successes\":${SUCCESSES},\"warnings\":${WARNINGS:-0}}")
         echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
-        echo "Task $(context.task.name) completed."
       computeResources:
         limits:
           cpu: "8"
@@ -219,10 +230,6 @@ spec:
 
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
-      when:
-        - input: "$(params.SKIP_SBOM_GENERATION)"
-          operator: in
-          values: [ "false" ]
       workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
       volumeMounts:
         - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
@@ -234,12 +241,19 @@ spec:
           value: $(params.image-url)
         - name: IMAGE_DIGEST
           value: $(params.image-digest)
+        - name: SKIP_SBOM_GENERATION
+          value: $(params.SKIP_SBOM_GENERATION)
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
 
         if [ -z "${IMAGE_URL}" ] || [ -z "${IMAGE_DIGEST}" ]; then
           echo 'No image-url or image-digest param provided. Skipping upload.'
+          exit 0
+        fi
+
+        if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
+          echo 'Skipping SBOM generation. Skipping upload.'
           exit 0
         fi
 
@@ -265,6 +279,7 @@ spec:
             exit 1
           fi
         done
+        echo "Task $(context.task.name) completed."
       computeResources:
         limits:
           memory: 256Mi
