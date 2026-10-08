@@ -2,6 +2,12 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.1.3
+
+### Changed
+
+- Use oficial crypto-scanner namespace to pull the crypto-rules-image on every staging cluster
+
 ## 0.1.2
 
 ### Changed

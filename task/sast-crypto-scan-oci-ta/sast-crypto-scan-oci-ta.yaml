@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.1.2"
+    app.kubernetes.io/version: "0.1.3"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -108,15 +108,15 @@ spec:
         IMAGE="crypto-rules-image:latest"
 
         # There are two ways of accessing the proprietary crypto-rules-image depending on the cluster
-        if [[ "${CLUSTER}" =~ ^(kflux-prd-rh03|kflux-prd-rh02|kflux-prd-rh01|stone-prod-p02|stone-prod-p01|kflux-ocp-p01|kflux-rhel-p01|kflux-osp-p01|stone-stg-rh01)$ ]] ; then
+        if [[ "${CLUSTER}" =~ ^(kflux-prd-rh03|kflux-prd-rh02|kflux-prd-rh01|stone-prod-p02|stone-prod-p01|kflux-ocp-p01|kflux-rhel-p01|kflux-osp-p01)$ ]] ; then
           echo "Using image from quay.io using robot federated account"
           # Use bounded token with quay.io federated robot account
           ADDITIONAL_RULES_IMAGE="quay.io/exd-guild-security/${IMAGE}"
           ROBOT_ACCOUNT="exd-guild-security+konflux_crypto_rules_pull"
-        elif [[ "${CLUSTER}" =~ ^(stone-stage-p01)$ ]] ; then
+        elif [[ "${CLUSTER}" =~ ^(stone-stage-p01|stone-stg-rh01)$ ]] ; then
           echo "Using image from internal openshift registry"
           # Use internal mirrored image
-          ADDITIONAL_RULES_IMAGE="image-registry.openshift-image-registry.svc:5000/tmp-sguarino/${IMAGE}"
+          ADDITIONAL_RULES_IMAGE="image-registry.openshift-image-registry.svc:5000/crypto-scanner/${IMAGE}"
           ROBOT_ACCOUNT=""
           # Trust internal ca bundle to connect to internal openshift registry
           export SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
