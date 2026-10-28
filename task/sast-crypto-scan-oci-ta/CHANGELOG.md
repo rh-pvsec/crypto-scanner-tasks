@@ -2,7 +2,7 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
-## 0.1.4
+## 0.2.0
 
 ### Changed
 
