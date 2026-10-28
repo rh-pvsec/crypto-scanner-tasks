@@ -2,6 +2,12 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.1.4
+
+### Changed
+
+- Bump version to stay in sync with the trusted artifacts flavor
+
 ## 0.1.3
 
 ### Changed

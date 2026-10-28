@@ -2,6 +2,12 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.1.4
+
+### Changed
+
+- Removes the obsolete `CACHI2_ARTIFACT` parameter from user pipelines.
+
 ## 0.1.3
 
 ### Changed
