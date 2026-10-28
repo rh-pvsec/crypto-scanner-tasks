@@ -6,7 +6,7 @@
 
 ### Changed
 
-- Bump version to stay in sync with the trusted artifacts flavor
+- Removes the obsolete `CACHI2_ARTIFACT` parameter from user pipelines.
 
 ## 0.1.3
 
