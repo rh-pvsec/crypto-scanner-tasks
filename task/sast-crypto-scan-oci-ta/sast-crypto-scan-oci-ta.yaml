@@ -13,11 +13,6 @@ spec:
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
     It reports crypto algorithms in a CycloneDX format (cbom.json).
   params:
-    - name: CACHI2_ARTIFACT
-      description: The Trusted Artifact URI pointing to the artifact with
-        the prefetched dependencies.
-      type: string
-      default: ""
     - name: SOURCE_ARTIFACT
       description: The Trusted Artifact URI pointing to the artifact with
         the application source code.
