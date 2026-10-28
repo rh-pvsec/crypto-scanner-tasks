@@ -47,18 +47,24 @@ A cbom will be uploaded as a trusted artifact.
 
 > [!NOTE]
 > OpenSource rules are supported on every Konflux cluster, while proprietary rules from ScanOSS are by now supported only on the following RedHat owned clusters:
+>
+> **Stage**
 > - stone-stage-p01
 > - stone-stg-rh01
 >
-> If you need to use proprietary rules on the following Red Hat clusters before it gets onboarded:
-> - kflux-prd-rh01
-> - kflux-prd-rh02
-> - kflux-prd-rh03
-> - stone-prod-p01
-> - stone-prod-p02
+> **Production**
+> - kflux-fedora-01
 > - kflux-osp-p01
 > - kflux-ocp-p01
+> - kflux-prd-rh01
+> - kflux-prd-rh03
+> - stone-prod-p01
+> - stone-prd-rh01
+> - stone-prod-p02
 > - kflux-rhel-p01
+> 
+> If you need to use proprietary rules on the following Red Hat clusters before it gets onboarded:
+> - kflux-prd-rh02
 > 
 > please, fill a Jira in PVSEC project indicating:
 > - Tenant
