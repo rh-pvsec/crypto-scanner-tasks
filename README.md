@@ -70,6 +70,15 @@ A cbom will be uploaded as a trusted artifact.
 > kubectl get --raw /.well-known/openid-configuration | jq -r .issuer
 > ```
 
+## Contributing
+
+After cloning, install the pre-commit hooks to prevent accidental secret leakage:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
 ## Fullsend
 
 This repository is enrolled in [Fullsend](https://github.com/fullsend-ai/fullsend) for automated triage, code, review, and fix workflows.
