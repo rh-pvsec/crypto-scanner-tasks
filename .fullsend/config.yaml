@@ -19,4 +19,7 @@ create_issues:
             - fullsend-ai/fullsend
 inference:
     project: it-gcp-pvsec-fullsend
+    region: global
+    provider: vertex
+    auth: vertex
     wif_provider: projects/826847573293/locations/global/workloadIdentityPools/fullsend-inference/providers/gh-rh-pvsec-crypto-scanner-tasks
