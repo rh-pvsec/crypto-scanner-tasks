@@ -6,7 +6,7 @@
 
 ### Changed
 
-- Bump version to stay in sync with the trusted artifacts flavor
+- Update list of clusters with mirror of proprietary rules image
 
 ## 0.1.3
 
