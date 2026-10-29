@@ -6,8 +6,11 @@
 
 ### Changed
 
-- Remove the obsolete `CACHI2_ARTIFACT` parameter from user pipelines
 - Update list of clusters with mirror of proprietary rules image
+
+### Removed
+
+- Remove the obsolete `CACHI2_ARTIFACT` parameter from user pipelines
 
 ## 0.1.3
 
