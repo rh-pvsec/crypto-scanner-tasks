@@ -2,6 +2,12 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.2.1
+
+### Changed
+
+- Update and add computeResources on every step
+
 ## 0.2.0
 
 ### Changed
