@@ -8,7 +8,6 @@ It reports crypto algorithms in a CycloneDX format (cbom.json).
 
 |name|description|default value|required|
 |---|---|---|---|
-|CACHI2_ARTIFACT|The Trusted Artifact URI pointing to the artifact with the prefetched dependencies.|""|false|
 |SOURCE_ARTIFACT|The Trusted Artifact URI pointing to the artifact with the application source code.||true|
 |TARGET_DIRS|Target directories in component's source code. Multiple values should be separated with commas.|.|false|
 |SKIP_SBOM_GENERATION|Skip SBOM-related operations. This will likely cause EC policies to fail if enabled|false|false|

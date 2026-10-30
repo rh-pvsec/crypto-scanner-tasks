@@ -2,6 +2,16 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.2.0
+
+### Changed
+
+- Update list of clusters with mirror of proprietary rules image
+
+### Removed
+
+- Remove the obsolete `CACHI2_ARTIFACT` parameter from user pipelines
+
 ## 0.1.3
 
 ### Changed

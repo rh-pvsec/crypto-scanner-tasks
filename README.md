@@ -25,8 +25,6 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
         value: $(tasks.build-image-index.results.IMAGE_URL)
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
-      - name: CACHI2_ARTIFACT
-        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
       runAfter:
       - build-image-index
       taskRef:
@@ -35,7 +33,7 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
         - name: name
           value: sast-crypto-scan-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan-oci-ta:0.1.2
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan-oci-ta:0.2.0
         - name: kind
           value: task
       when:
@@ -49,18 +47,24 @@ A cbom will be uploaded as a trusted artifact.
 
 > [!NOTE]
 > OpenSource rules are supported on every Konflux cluster, while proprietary rules from ScanOSS are by now supported only on the following RedHat owned clusters:
+>
+> **Stage**
 > - stone-stage-p01
 > - stone-stg-rh01
 >
-> If you need to use proprietary rules on the following Red Hat clusters before it gets onboarded:
-> - kflux-prd-rh01
-> - kflux-prd-rh02
-> - kflux-prd-rh03
-> - stone-prod-p01
-> - stone-prod-p02
+> **Production**
+> - kflux-fedora-01
 > - kflux-osp-p01
 > - kflux-ocp-p01
+> - kflux-prd-rh01
+> - kflux-prd-rh03
+> - stone-prod-p01
+> - stone-prd-rh01
+> - stone-prod-p02
 > - kflux-rhel-p01
+> 
+> If you need to use proprietary rules on the following Red Hat clusters before it gets onboarded:
+> - kflux-prd-rh02
 > 
 > please, fill a Jira in PVSEC project indicating:
 > - Tenant
