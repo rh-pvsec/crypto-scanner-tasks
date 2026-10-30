@@ -180,6 +180,7 @@ spec:
               fieldPath: metadata.annotations['pipelinesascode.tekton.dev/log-url']
       computeResources:
         limits:
+          cpu: "8"
           memory: 4Gi
         requests:
           cpu: "1"
