@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.2.0"
+    app.kubernetes.io/version: "0.2.1"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -80,6 +80,11 @@ spec:
           name: trusted-ca
           readOnly: true
           subPath: ca-bundle.crt
+      computeResources:
+        limits:
+          memory: 4Gi
+        requests:
+          memory: 4Gi
 
     - name: pull-rules
       image: quay.io/konflux-ci/task-runner:2.1.0@sha256:c34c933c269e2401bb042fe69e2999cf288331b6586d4f4eca9c845270d9b1f9
@@ -91,6 +96,12 @@ spec:
         - name: bound-token
           mountPath: /var/run/secrets/tokens
           readOnly: true
+      computeResources:
+        limits:
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
@@ -167,6 +178,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.annotations['pipelinesascode.tekton.dev/log-url']
+      computeResources:
+        limits:
+          cpu: "8"
+          memory: 4Gi
+        requests:
+          cpu: "1"
+          memory: 4Gi
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
@@ -236,13 +254,6 @@ spec:
         fi
         TEST_OUTPUT=$(echo "{\"result\":\"${RESULT}\",\"timestamp\":\"$(date -u --iso-8601=seconds)\",\"failures\":${FAILURES},\"successes\":${SUCCESSES},\"warnings\":${WARNINGS:-0}}")
         echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
-      computeResources:
-        limits:
-          cpu: "8"
-          memory: 4Gi
-        requests:
-          cpu: "1"
-          memory: 4Gi
 
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08
@@ -259,6 +270,12 @@ spec:
           value: $(params.image-digest)
         - name: SKIP_SBOM_GENERATION
           value: $(params.SKIP_SBOM_GENERATION)
+      computeResources:
+        limits:
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
@@ -296,9 +313,3 @@ spec:
           fi
         done
         echo "Task $(context.task.name) completed."
-      computeResources:
-        limits:
-          memory: 256Mi
-        requests:
-          cpu: 100m
-          memory: 256Mi
