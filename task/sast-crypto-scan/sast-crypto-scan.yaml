@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.1.3"
+    app.kubernetes.io/version: "0.1.4"
 spec:
   description: >-
     The sast-crypto-scan task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -227,6 +227,55 @@ spec:
         requests:
           cpu: "1"
           memory: 4Gi
+
+    - name: update-cbom-metadata
+      image: quay.io/redhat-user-workloads/the-collective-tenant/mobster-f7a65:on-pr-85a18487bf65ebae21aa068ee46f3ddae6c07f18
+      workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
+      volumeMounts:
+        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
+          name: trusted-ca
+          readOnly: true
+          subPath: ca-bundle.crt
+      env:
+        - name: IMAGE_URL
+          value: $(params.image-url)
+        - name: IMAGE_DIGEST
+          value: $(params.image-digest)
+        - name: SKIP_SBOM_GENERATION
+          value: $(params.SKIP_SBOM_GENERATION)
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        
+        if [ -z "${IMAGE_URL}" ] || [ -z "${IMAGE_DIGEST}" ]; then
+          echo 'No image-url or image-digest param provided. Skipping metadata update.'
+          exit 0
+        fi
+
+        if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
+          echo 'Skipping SBOM generation. Skipping metadata update.'
+          exit 0
+        fi
+        
+        CBOM_FILES="cbom.json"
+        
+        for CBOM_FILE in ${CBOM_FILES}; do
+          if [ ! -f "${CBOM_FILE}" ]; then
+            echo 'No ${CBOM_FILE} exists. Skipping metadata update.'
+            continue
+          fi
+          mobster generate \
+            --output "$CBOM_FILE" oci-cbom \
+            --image-pullspec "$IMAGE_URL" \
+            --image-digest "$IMAGE_DIGEST" \
+            --cbom-path "$CBOM_FILE"
+        done
+      computeResources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 512Mi
+          cpu: 100m
 
     - name: upload
       image: quay.io/konflux-ci/oras:latest@sha256:da693a7dcbadafc9f4422ae6600b41b2847944f7f14c5622827d6f58c727cf08

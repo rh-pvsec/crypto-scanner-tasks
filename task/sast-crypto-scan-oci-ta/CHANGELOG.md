@@ -2,6 +2,13 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.1.4
+
+### Changed
+
+- Add Mobster step to add required metadata to the result CBOM. The CBOM now contains PURLs
+  for identifying the scanned image.
+
 ## 0.1.3
 
 ### Changed
