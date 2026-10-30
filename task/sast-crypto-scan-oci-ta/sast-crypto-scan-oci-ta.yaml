@@ -80,6 +80,11 @@ spec:
           name: trusted-ca
           readOnly: true
           subPath: ca-bundle.crt
+      computeResources:
+        limits:
+          memory: 4Gi
+        requests:
+          memory: 4Gi
 
     - name: pull-rules
       image: quay.io/konflux-ci/task-runner:2.1.0@sha256:c34c933c269e2401bb042fe69e2999cf288331b6586d4f4eca9c845270d9b1f9
