@@ -34,8 +34,14 @@ Each `task/<name>/` directory holds exactly three files: `<name>.yaml`,
 `README.md` (a hand-maintained parameter/result table — see
 [Task README tables](#task-readme-tables)), and `CHANGELOG.md`.
 
-There is no test suite and no build step. The only automated local check is
-`pre-commit` (see [Local checks](#local-checks)).
+There is no test suite and no local build step. The four Konflux PipelineRuns
+in `.tekton/` do build and push the task bundles automatically: each is
+path-filtered via `on-cel-expression` to its own flavor's `task/<name>/***`
+directory (plus its own `.tekton/` file and `Containerfile`) and runs on both
+`pull_request` and `push` against `main`, invoking a `tkn-bundle` task. So a
+change under `task/**` is built automatically, even though nothing in this
+repository tests it. The only automated *local* check is `pre-commit` (see
+[Local checks](#local-checks)).
 
 ## Task-authoring conventions
 
@@ -185,10 +191,7 @@ reviewing every step and image to see whether user execution can be
 restricted. **If #50 is resolved by dropping the root grant, update this
 section.**
 
-The UID-0 requirement on `update-cbom-metadata` originates in the
-permission-denied failure described above; whether granting it is the right
-fix is still open in #50. Re-evaluate it if the step's script or image
-changes, or if #50 lands.
+Re-evaluate the grant if the step's script, its image, or #50 changes.
 
 The account is also incomplete, and the gap is worth seeing from this file
 alone: neither flavor declares `allowPrivilegeEscalation`, `capabilities`, or
@@ -203,7 +206,7 @@ capabilities anywhere — none of which exist in this repository today. "No
 added capabilities" is a different statement from the absent capability drop
 described above; neither implies the other.
 
-### `mobster generate oci-cbom` does no registry I/O
+### Registry I/O and credentials, step by step
 
 `update-cbom-metadata` does not call `select-oci-auth` and does not need to.
 `mobster generate oci-cbom` derives PURLs from the `image-url` and
@@ -212,8 +215,30 @@ pull or push anything. The author confirmed this on
 [#42](https://github.com/rh-pvsec/crypto-scanner-tasks/pull/42).
 
 Contrast with the `upload` step, which *does* talk to the registry via
-`oras attach` and therefore *does* call `select-oci-auth`. The asymmetry is
-correct.
+`oras attach` and therefore *does* call `select-oci-auth`.
+
+`select-oci-auth` is not, however, the convention for *every* step that talks
+to a registry. Two steps do registry I/O, and they authenticate differently:
+
+- `upload` — `oras attach`, authenticated with `select-oci-auth`.
+- `pull-rules` — pulls the proprietary rules image with a bound ServiceAccount
+  token, **not** `select-oci-auth`.
+
+(`update-cbom-metadata`, covered above, does no registry I/O at all and so
+needs no credential.)
+
+The `pull-rules` path is deliberate and is the one least visible from the step
+list. Both flavors declare a `bound-token` projected volume holding a
+ServiceAccount token (audience `openshift`, `expirationSeconds: 7200`, path
+`quay-token`), mounted only on `pull-rules`. The script reads that token,
+exchanges it at the registry's `oauth2/federation/robot/token` endpoint for a
+Quay federated robot-account token, then runs `oc registry login` followed by
+`oc image extract` to fetch the rules. So the pipeline does handle a Quay
+robot credential, even though no step references a pull secret directly.
+
+Read together, the split is correct: `select-oci-auth` covers the `oras` path,
+the bound-token federation exchange covers the rules pull, and
+`update-cbom-metadata` needs neither.
 
 The `trusted-ca` mount on `update-cbom-metadata` is a separate question — see
 [Open questions](#open-questions).
