@@ -2,6 +2,12 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.3.0
+
+### Added
+
+- Task result "CBOM_BLOB_URL" pointing to the blob created by pushing the CBOM to the registry.
+
 ## 0.2.2
 
 ### Changed

@@ -20,6 +20,7 @@ It reports crypto algorithms in a CycloneDX format (cbom.json).
 
 |name|description|
 |---|---|
+|CBOM_BLOB_URL|Digest-qualified reference (`repository@sha256:<digest>`) to the attached `cbom.json` blob. Empty when upload is skipped.|
 |TEST_OUTPUT|Tekton task test output.|
 
 ## Workspaces
