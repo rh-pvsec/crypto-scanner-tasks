@@ -5,8 +5,10 @@ reviewers — human or automated — do not have to re-derive them from `git log
 on every pull request.
 
 Everything stated as a convention below is either observable in the current
-tree or was answered by a maintainer on a merged pull request, and each entry
-says which. Items that the maintainers have not decided yet are collected under
+tree or was answered by a maintainer on a merged pull request. Where a claim
+rests on a maintainer's answer rather than on the tree, the entry names the
+pull request it came from; an uncited claim is one you can read off the tree
+and check. Items that the maintainers have not decided yet are collected under
 [Open questions](#open-questions) rather than being asserted as policy. That
 section records what is still open and where it is tracked, so a finding on one
 of those topics can cite the current state alongside its own conclusion.
@@ -50,19 +52,25 @@ the full list of semantic differences is:
   `/var/workdir`, and a leading `use-trusted-artifact` step. The plain flavor
   declares a `workspaces:` entry named `workspace` instead and has no
   equivalent step.
-- **Paths.** `-oci-ta` uses the literal `/var/workdir/source`; the plain flavor
-  uses `$(workspaces.workspace.path)/...` and additionally passes
-  `WORKSPACE_PATH` into the `rh-crypto-scanner` step as an env var, which that
-  step's script uses to build `SOURCE_CODE_DIR`.
+- **Paths.** `-oci-ta` uses two literal roots under `/var/workdir`:
+  `/var/workdir/source` for the source tree, and
+  `/var/workdir/$(context.task.name)` for the soft-failure `warnings` marker.
+  The plain flavor uses `$(workspaces.workspace.path)/...` for both and
+  additionally passes `WORKSPACE_PATH` into the `rh-crypto-scanner` step as an
+  env var, which that step's script uses to build `SOURCE_CODE_DIR`.
 - **`workingDir`.** `/var/workdir/source` versus
   `$(workspaces.workspace.path)/hacbs/$(context.task.name)`.
+- **Identity fields.** `metadata.name` is the flavor's own name, and
+  `spec.description` embeds that same name in its opening sentence. These
+  differ by definition and are not drift.
 
 Nothing else should diverge semantically. In particular the step list after
 `use-trusted-artifact` (`pull-rules` → `rh-crypto-scanner` →
 `update-cbom-metadata` → `upload`), the params, the results, the
 `computeResources`, and the script bodies are expected to match.
 
-*Verifiable:* `diff task/sast-crypto-scan-oci-ta/sast-crypto-scan-oci-ta.yaml
+Check this against the tree with `diff
+task/sast-crypto-scan-oci-ta/sast-crypto-scan-oci-ta.yaml
 task/sast-crypto-scan/sast-crypto-scan.yaml`.
 
 That diff also reports two formatting-only divergences that are not in the
@@ -95,8 +103,9 @@ entries do not rest on equally firm ground:
   or pinning, since it is the image that executes the scan over consumer
   source.
 - `crypto-rules-image:latest`, resolved inside the `pull-rules` script, is
-  intentionally unpinned — the comment above it in the script says so
-  (`sast-crypto-scan.yaml:88`). It is the rolling proprietary rules image.
+  intentionally unpinned — the comment directly above the `IMAGE=` assignment
+  in that script says so ("This unpinned image contain the latest rolling
+  version of the rules"). It is the rolling proprietary rules image.
 
 Scratch tags from `quay.io/redhat-user-workloads/...` must never appear in
 `task/**`. They are legitimate in `.tekton/**`, which is where Konflux pushes
@@ -132,10 +141,16 @@ SKIP_SBOM_GENERATION flow at script level" in both CHANGELOGs).
 
 ### Steps run as root in this pipeline
 
-The task steps that precede `update-cbom-metadata` run as root without any
-explicit `securityContext`, and the scanner writes root-owned files into the
-working directory. A later step that **mutates** those files therefore needs
-`runAsUser: 0` of its own.
+What UID a step runs as is decided by its image's own `USER` directive and by
+the cluster's security context constraints — not by the presence or absence of
+a `securityContext` block in the task YAML. The steps that precede
+`update-cbom-metadata` carry no `securityContext`, and their images happen to
+default to root, so the scanner writes root-owned files into the working
+directory. A later step that **mutates** those files therefore has to run as
+UID 0 too. The `mobster` image that `update-cbom-metadata` uses evidently does
+*not* default to root — that is the inference from the permission-denied
+failure recorded below, not a checked `USER` directive — so that step is the
+one that has to say so explicitly.
 
 That is why `update-cbom-metadata` carries:
 
@@ -154,12 +169,23 @@ reviewing every step and image to see whether user execution can be
 restricted. **If #50 is resolved by dropping the root grant, update this
 section.**
 
-The root grant on `update-cbom-metadata` is therefore justified by the
-permission-denied failure described above, as of `0.2.2`; re-evaluate it if
-the step's script or image changes, or if #50 lands. That rationale is
-specific to this step: a root grant on any *new* step is worth flagging, as
-are `privileged`, host namespaces, `hostPath`, or added capabilities anywhere
-— none of which exist in this repository today.
+The UID-0 requirement on `update-cbom-metadata` originates in the
+permission-denied failure described above; whether granting it is the right
+fix is still open in #50. Re-evaluate it if the step's script or image
+changes, or if #50 lands.
+
+The account is also incomplete, and the gap is worth seeing from this file
+alone: neither flavor declares `allowPrivilegeEscalation`, `capabilities`, or
+`runAsNonRoot` anywhere, and #50's suggested fix asks for
+`allowPrivilegeEscalation: false` and `capabilities: drop: ["ALL"]` to
+accompany the grant. Whatever #50 decides about the UID itself, that
+hardening is not present today.
+
+That rationale is specific to this one step. A root grant on any *new* step is
+worth flagging, as are `privileged`, host namespaces, `hostPath`, or *added*
+capabilities anywhere — none of which exist in this repository today. "No
+added capabilities" is a different statement from the absent capability drop
+described above; neither implies the other.
 
 ### `mobster generate oci-cbom` does no registry I/O
 
@@ -197,19 +223,17 @@ site 3 exists once:
 1. `app.kubernetes.io/version` in `task/<name>/<name>.yaml`
 2. The topmost `## <version>` heading in `task/<name>/CHANGELOG.md`
 3. The bundle tag in the usage snippet in the root `README.md`. There is only
-   one such snippet and it is pinned to the `-oci-ta` bundle
-   (`README.md:36`). The plain flavor's registry path appears at
-   `README.md:10` without a version, so there is no second README tag to
-   bump.
+   one such snippet and it is pinned to the `-oci-ta` bundle. The plain
+   flavor's registry path is mentioned earlier in that README without a
+   version, so there is no second README tag to bump.
 
 Site 3 is the one that gets missed, because `README.md` is usually not part of
 the diff and an inline review comment cannot be attached to it. Commit
-`06dfaba` ("Update README.md") exists only to repair that drift.
-
-> **Known drift:** at `0.2.2` the README snippet still reads `:0.2.1`.
-> Issue [#51](https://github.com/rh-pvsec/crypto-scanner-tasks/issues/51)
-> proposes a CI check for this and fixing the live drift; do not fix it as a
-> drive-by in an unrelated PR.
+`06dfaba` ("Update README.md") exists only to repair that drift. Issue
+[#51](https://github.com/rh-pvsec/crypto-scanner-tasks/issues/51) tracks both
+the live drift and a proposed CI check for it; compare the three sites
+yourself rather than trusting a recorded snapshot, and do not fix drift as a
+drive-by in an unrelated PR.
 
 ### Check `main` before choosing a version
 
@@ -327,15 +351,17 @@ the reader how far the question has got.
    There is no `CODEOWNERS`, no pull request template, and no stated policy in
    this repository, so automated findings of the form "the PR body is empty and
    no issue is linked, therefore a human must approve" currently have no
-   in-repo rule to appeal to. If the real policy is "a Jira key such as
-   `ISV-7778` in the branch name or commit scope is sufficient authorization,"
-   writing exactly that down here is the useful outcome. Until a maintainer
-   states the policy, this entry records only that no in-repo rule exists yet.
+   in-repo rule to appeal to. Writing the real policy down here — whatever it
+   turns out to be — is the useful outcome. This entry records only that no
+   in-repo authorization rule exists yet; nothing in this file authorizes a
+   merge, and no branch-name or commit-scope convention substitutes for human
+   approval unless a maintainer states otherwise here.
 
 ## Related
 
 - [#50](https://github.com/rh-pvsec/crypto-scanner-tasks/issues/50) — revisit
   root execution across steps and images (affects the `runAsUser: 0` rationale
   above)
-- [#51](https://github.com/rh-pvsec/crypto-scanner-tasks/issues/51) — CI check
-  for the three-site version lockstep
+- [#51](https://github.com/rh-pvsec/crypto-scanner-tasks/issues/51) — the
+  live README/task version drift, and a CI check for the three-site version
+  lockstep
