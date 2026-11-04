@@ -7,9 +7,9 @@ on every pull request.
 Everything stated as a convention below is either observable in the current
 tree or was answered by a maintainer on a merged pull request, and each entry
 says which. Items that the maintainers have not decided yet are collected under
-[Open questions](#open-questions) rather than being asserted as policy. If you
-are an agent and your finding is about something listed there, say that the
-question is open and cite this file — do not invent an answer.
+[Open questions](#open-questions) rather than being asserted as policy. That
+section records what is still open and where it is tracked, so a finding on one
+of those topics can cite the current state alongside its own conclusion.
 
 ## Repository layout
 
@@ -22,6 +22,11 @@ The whole repository is a handful of files:
 | `.tekton/` | Konflux build pipelines that build and push *this repo's own* task bundles |
 | `.github/workflows/fullsend.yaml` | The only GitHub Actions workflow |
 | `README.md` | Consumer-facing usage, cluster support matrix, contributing notes |
+| `AGENTS.md` | This file |
+| `renovate.json` | MintMaker/Renovate config; automerges `.tekton/**` only (see [Image pinning](#image-pinning)) |
+| `.pre-commit-config.yaml` | The single local hook, `gitleaks` (see [Local checks](#local-checks)) |
+| `.pr_agent.toml` | PR-agent config; currently sets only `ignore_pr_authors` |
+| `.fullsend/` | Fullsend configuration; `config.yaml` enables the triage, coder, review and fix roles |
 
 Each `task/<name>/` directory holds exactly three files: `<name>.yaml`,
 `README.md` (a generated-looking parameter/result table), and `CHANGELOG.md`.
@@ -38,7 +43,7 @@ pair. A change to one is almost always a bug if it is not mirrored in the
 other, and both flavors are released under the same version number.
 
 They are **not** identical, and the differences are deliberate. As of `0.2.2`
-the full list is:
+the full list of semantic differences is:
 
 - **Source acquisition.** The `-oci-ta` flavor declares a `SOURCE_ARTIFACT`
   param, a `workdir` `emptyDir` volume, a `stepTemplate` mounting it at
@@ -52,13 +57,20 @@ the full list is:
 - **`workingDir`.** `/var/workdir/source` versus
   `$(workspaces.workspace.path)/hacbs/$(context.task.name)`.
 
-Nothing else should diverge. In particular the step list after
+Nothing else should diverge semantically. In particular the step list after
 `use-trusted-artifact` (`pull-rules` → `rh-crypto-scanner` →
 `update-cbom-metadata` → `upload`), the params, the results, the
 `computeResources`, and the script bodies are expected to match.
 
 *Verifiable:* `diff task/sast-crypto-scan-oci-ta/sast-crypto-scan-oci-ta.yaml
 task/sast-crypto-scan/sast-crypto-scan.yaml`.
+
+That diff also reports two formatting-only divergences that are not in the
+list above: the `trusted-ca` volume's configMap keys are ordered differently
+between the two files (`name` before `items` in the plain flavor, the reverse
+in `-oci-ta`), and a few blank or trailing-whitespace lines inside the step
+scripts differ. Both are inert, and normalizing them would make the list
+above literally true.
 
 ### Image pinning
 
@@ -70,14 +82,21 @@ Renovate/MintMaker is configured to automerge only `.tekton/**` (see
 `renovate.json`), so do not assume a bot will refresh a `task/**` digest for
 you.
 
-Two deliberate exceptions, which are **not** findings:
+Two images are deliberately left on a mutable tag. No tracking issue covers
+them today, so — unlike the root grant below, which #50 bounds — this is a
+record of current state rather than a time-bounded exception, and the two
+entries do not rest on equally firm ground:
 
 - `quay.io/exd-guild-security/crypto-finder-image:latest` (the
-  `rh-crypto-scanner` step) is intentionally unpinned so the scanner picks up
-  the latest released scanner build.
+  `rh-crypto-scanner` step) is unpinned. The reason given here — that it lets
+  the scanner pick up the latest released build — is **inferred, not
+  confirmed**: there is no comment at the image reference in either flavor and
+  no maintainer statement to cite. This one is worth a maintainer confirming
+  or pinning, since it is the image that executes the scan over consumer
+  source.
 - `crypto-rules-image:latest`, resolved inside the `pull-rules` script, is
-  intentionally unpinned — the comment above it in the script says so. It is
-  the rolling proprietary rules image.
+  intentionally unpinned — the comment above it in the script says so
+  (`sast-crypto-scan.yaml:88`). It is the rolling proprietary rules image.
 
 Scratch tags from `quay.io/redhat-user-workloads/...` must never appear in
 `task/**`. They are legitimate in `.tekton/**`, which is where Konflux pushes
@@ -135,10 +154,12 @@ reviewing every step and image to see whether user execution can be
 restricted. **If #50 is resolved by dropping the root grant, update this
 section.**
 
-Do not open a new finding asking for the `runAsUser: 0` on
-`update-cbom-metadata` to be justified. Do flag a root grant on any *new* step,
-and do flag `privileged`, host namespaces, `hostPath`, or added capabilities
-anywhere — none of those exist in this repository today.
+The root grant on `update-cbom-metadata` is therefore justified by the
+permission-denied failure described above, as of `0.2.2`; re-evaluate it if
+the step's script or image changes, or if #50 lands. That rationale is
+specific to this step: a root grant on any *new* step is worth flagging, as
+are `privileged`, host namespaces, `hostPath`, or added capabilities anywhere
+— none of which exist in this repository today.
 
 ### `mobster generate oci-cbom` does no registry I/O
 
@@ -170,12 +191,16 @@ The `trusted-ca` mount on `update-cbom-metadata` is a separate question — see
 
 ### Three version sites move in lockstep
 
-A release touches all of these, for **both** flavors:
+A release touches all of these. Sites 1 and 2 exist for **both** flavors;
+site 3 exists once:
 
 1. `app.kubernetes.io/version` in `task/<name>/<name>.yaml`
 2. The topmost `## <version>` heading in `task/<name>/CHANGELOG.md`
-3. The bundle tag in the usage snippet in the root `README.md`
-   (`quay.io/konflux-ci/tekton-catalog/task-<name>:<version>`)
+3. The bundle tag in the usage snippet in the root `README.md`. There is only
+   one such snippet and it is pinned to the `-oci-ta` bundle
+   (`README.md:36`). The plain flavor's registry path appears at
+   `README.md:10` without a version, so there is no second README tag to
+   bump.
 
 Site 3 is the one that gets missed, because `README.md` is usually not part of
 the diff and an inline review comment cannot be attached to it. Commit
@@ -216,12 +241,14 @@ from `0.1.4` to `0.2.0`. Removing a parameter from user pipelines **is** a
 consumer-visible change, so the minor bump there and the patch bump on #42 are
 consistent, not contradictory.
 
-The working rule both data points support:
+The working rule both data points support — a candidate description of
+observed behavior, not a ratified convention:
 
-> Bump **minor** when a consumer has to change something — a param added as
-> required, a param removed, a change to how the task is invoked or what it
-> guarantees. Bump **patch** otherwise, including for new steps that are
-> invisible from the pipeline author's side.
+- Bump **minor** when a consumer has to change something: a param added as
+  required, a param removed, a change to how the task is invoked or what it
+  guarantees.
+- Bump **patch** otherwise, including for new steps that are invisible from
+  the pipeline author's side.
 
 This rule is inferred from two releases rather than ratified by the
 maintainers — see [Open questions](#open-questions). Argue from consumer
@@ -272,8 +299,9 @@ no YAML linter, no schema validation of the Tekton files, and no test suite, so
 
 These are **not decided**. They are listed here so that they get settled once,
 in a PR that is about settling them, instead of being re-litigated on every
-review. An agent that encounters one of these should link to this section and
-move on rather than asserting an answer.
+review. Each entry records what is open and where it is tracked; raising a
+finding on one of these topics remains legitimate, and linking the entry tells
+the reader how far the question has got.
 
 1. **Is the `trusted-ca` mount on `update-cbom-metadata` still required?**
    The step performs no registry or network I/O, so on the face of it the CA
@@ -301,8 +329,8 @@ move on rather than asserting an answer.
    no issue is linked, therefore a human must approve" currently have no
    in-repo rule to appeal to. If the real policy is "a Jira key such as
    `ISV-7778` in the branch name or commit scope is sufficient authorization,"
-   writing exactly that down here is the useful outcome. Reviewers should not
-   treat an empty PR body as a policy violation until this is answered.
+   writing exactly that down here is the useful outcome. Until a maintainer
+   states the policy, this entry records only that no in-repo rule exists yet.
 
 ## Related
 
