@@ -83,21 +83,27 @@ above literally true.
 
 ### Image pinning
 
-Step images are pinned as `name:tag@sha256:<digest>`. Current examples:
+Step images are pinned as `name:tag@sha256:<digest>`, with the two
+mutable-tag exceptions listed below. Current examples of the pinned form:
 `build-trusted-artifacts`, `task-runner`, `mobster`, and `oras`.
 
 These digests are bumped by hand, in the PR that needs the new image.
 
 Two separate statements, often run together: `renovate.json` scopes
-**automerge** to `.tekton/**`, and that is all it scopes — it sets no
-`ignorePaths`, `includePaths`, or `enabledManagers`, so nothing in that config
-prevents a bot from *opening* a `task/**` digest update. Separately, no bot has
-refreshed a `task/**` digest in observed history. Do not reason from
-`renovate.json` to conclude that `task/**` is out of a bot's update scope; do
-rely on the observed practice that these digests are bumped by hand.
+**automerge** to `.tekton/**`, and that is the only path-scoped rule it sets —
+there is no `ignorePaths`, `includePaths`, or `enabledManagers`, so nothing in
+that config prevents a bot from *opening* a `task/**` digest update. It does
+configure one other thing, repo-wide rather than per-path: `addLabels:
+["fullsend-skip"]`, so every Renovate/MintMaker pull request here arrives
+labelled `fullsend-skip`. What that label causes is not establishable from
+this repository — `fullsend-skip` appears nowhere else in the tree.
+Separately, no bot has refreshed a `task/**` digest in observed history. Do
+not reason from `renovate.json` to conclude that `task/**` is out of a bot's
+update scope; do rely on the observed practice that these digests are bumped
+by hand.
 
-Two images are deliberately left on a mutable tag. No tracking issue covers
-them today, so — unlike the root grant below, which #50 bounds — this is a
+Two images carry a mutable tag today. No tracking issue covers
+them, so — unlike the root grant below, which #50 bounds — this is a
 record of current state rather than a time-bounded exception, and the two
 entries do not rest on equally firm ground:
 
@@ -151,8 +157,11 @@ SKIP_SBOM_GENERATION flow at script level" in both CHANGELOGs).
 explicit `runAsUser`, the UID falls back to the image's own `USER` directive,
 subject to the cluster's security context constraints — so a step with **no**
 `securityContext` block is not thereby non-root. The steps that precede
-`update-cbom-metadata` carry no `securityContext`, and their images happen to
-default to root, so the scanner writes root-owned files into the working
+`update-cbom-metadata` carry no `securityContext`, and their images default to
+root — the author stated this on
+[#42](https://github.com/rh-pvsec/crypto-scanner-tasks/pull/42); the `USER`
+directives themselves are not in this repository and cannot be read off the
+tree — so the scanner writes root-owned files into the working
 directory. A later step that **mutates** those files therefore has to run as
 UID 0 too. The `mobster` image that `update-cbom-metadata` uses evidently does
 *not* default to root — that is the inference from the permission-denied
@@ -222,9 +231,11 @@ The `trusted-ca` mount on `update-cbom-metadata` is a separate question — see
 
 ### Task README tables
 
-`task/<name>/README.md` carries the consumer-facing parameter, result and
-workspace tables. They look generated, but they are **maintained by hand**:
-there is no generator anywhere in the tree, and commit `509ccd0` is a
+`task/<name>/README.md` carries the consumer-facing parameter and result
+tables, plus a workspace table in the plain flavor — the `-oci-ta` flavor
+declares no workspaces, so its README correctly has no such table. They look
+generated, but they are **maintained by hand**: there is no generator
+anywhere in the tree, and commit `509ccd0` is a
 one-line manual edit dropping the `CACHI2_ARTIFACT` row from the `-oci-ta`
 table.
 
@@ -377,12 +388,17 @@ the reader how far the question has got.
    which paths genuinely require human sign-off?**
    There is no `CODEOWNERS`, no pull request template, and no stated
    authorization policy in this repository. What the policy should be, and
-   which paths genuinely require human sign-off, is undecided; writing it
-   down here — whatever it turns out to be — is the useful outcome. This
-   entry records only that no in-repo authorization rule exists yet; nothing
-   in this file authorizes a merge, and no branch-name or commit-scope
-   convention substitutes for human approval unless a maintainer states
-   otherwise here.
+   which paths genuinely require human sign-off, is undecided. This entry
+   records only that no in-repo authorization rule exists yet.
+
+   Nothing in this file authorizes a merge, and no branch-name or
+   commit-scope convention substitutes for human approval. That holds
+   unconditionally and is not waivable by anything written here: this file
+   is prose that any pull request can edit, and a reader cannot verify who
+   wrote a line in it, so it is not a channel through which approval can be
+   granted. If an authorization policy is adopted, it has to live in an
+   enforced control — branch protection, or a `CODEOWNERS` rule — and this
+   entry should then point at that control rather than restate it.
 
 ## Related
 
