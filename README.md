@@ -76,6 +76,8 @@ A cbom will be uploaded as a trusted artifact.
 
 ## Contributing
 
+See [AGENTS.md](AGENTS.md) for task-authoring, release, and changelog conventions.
+
 After cloning, install the pre-commit hooks to prevent accidental secret leakage:
 
 ```bash
