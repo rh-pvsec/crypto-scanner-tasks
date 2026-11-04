@@ -31,7 +31,8 @@ The whole repository is a handful of files:
 | `.fullsend/` | Fullsend configuration; `config.yaml` enables the triage, coder, review and fix roles |
 
 Each `task/<name>/` directory holds exactly three files: `<name>.yaml`,
-`README.md` (a generated-looking parameter/result table), and `CHANGELOG.md`.
+`README.md` (a hand-maintained parameter/result table — see
+[Task README tables](#task-readme-tables)), and `CHANGELOG.md`.
 
 There is no test suite and no build step. The only automated local check is
 `pre-commit` (see [Local checks](#local-checks)).
@@ -86,9 +87,14 @@ Step images are pinned as `name:tag@sha256:<digest>`. Current examples:
 `build-trusted-artifacts`, `task-runner`, `mobster`, and `oras`.
 
 These digests are bumped by hand, in the PR that needs the new image.
-Renovate/MintMaker is configured to automerge only `.tekton/**` (see
-`renovate.json`), so do not assume a bot will refresh a `task/**` digest for
-you.
+
+Two separate statements, often run together: `renovate.json` scopes
+**automerge** to `.tekton/**`, and that is all it scopes — it sets no
+`ignorePaths`, `includePaths`, or `enabledManagers`, so nothing in that config
+prevents a bot from *opening* a `task/**` digest update. Separately, no bot has
+refreshed a `task/**` digest in observed history. Do not reason from
+`renovate.json` to conclude that `task/**` is out of a bot's update scope; do
+rely on the observed practice that these digests are bumped by hand.
 
 Two images are deliberately left on a mutable tag. No tracking issue covers
 them today, so — unlike the root grant below, which #50 bounds — this is a
@@ -141,9 +147,10 @@ SKIP_SBOM_GENERATION flow at script level" in both CHANGELOGs).
 
 ### Steps run as root in this pipeline
 
-What UID a step runs as is decided by its image's own `USER` directive and by
-the cluster's security context constraints — not by the presence or absence of
-a `securityContext` block in the task YAML. The steps that precede
+`securityContext.runAsUser` is the field that sets a step's UID. Absent an
+explicit `runAsUser`, the UID falls back to the image's own `USER` directive,
+subject to the cluster's security context constraints — so a step with **no**
+`securityContext` block is not thereby non-root. The steps that precede
 `update-cbom-metadata` carry no `securityContext`, and their images happen to
 default to root, so the scanner writes root-owned files into the working
 directory. A later step that **mutates** those files therefore has to run as
@@ -212,6 +219,21 @@ The `trusted-ca` mount on `update-cbom-metadata` is a separate question — see
 - The soft-failure path for proprietary rules writes a `warnings` file that
   `rh-crypto-scanner` reads to turn `RESULT` into `WARNING`. Preserve that
   mechanism when touching `pull-rules`.
+
+### Task README tables
+
+`task/<name>/README.md` carries the consumer-facing parameter, result and
+workspace tables. They look generated, but they are **maintained by hand**:
+there is no generator anywhere in the tree, and commit `509ccd0` is a
+one-line manual edit dropping the `CACHI2_ARTIFACT` row from the `-oci-ta`
+table.
+
+So they are a fourth artifact that moves with a change, alongside the two
+flavors and the three version sites. Whenever a param, result or workspace is
+added, removed, or has its default or description changed, update the
+affected flavor's table — both flavors' tables, for anything that applies to
+both — **in the same PR**. Nothing checks this, and a stale table is the
+consumer-visible symptom.
 
 ## Release conventions
 
@@ -293,7 +315,11 @@ files a brand-new step under `### Changed`, where `### Added` fits better.
 Prefer the keepachangelog semantics for new entries; rewriting history in old
 entries is not worth a PR on its own.
 
-Both CHANGELOGs get the same heading and, in practice, near-identical bullets.
+Both CHANGELOGs get the same heading and, in practice, near-identical bullets
+— except where a param or step exists in only one flavor, which produces a
+legitimately different entry. `0.2.0` is the example: the `### Removed` entry
+for `CACHI2_ARTIFACT` appears only in the `-oci-ta` CHANGELOG, because the
+param only ever existed in that flavor.
 
 ## Commits and branches
 
@@ -330,8 +356,9 @@ the reader how far the question has got.
 1. **Is the `trusted-ca` mount on `update-cbom-metadata` still required?**
    The step performs no registry or network I/O, so on the face of it the CA
    bundle is unnecessary. The author kept it because he was unsure whether the
-   mount has other implications on the cluster. Needs a maintainer to confirm
-   it can be dropped.
+   mount has other implications on the cluster (author's comment on
+   [#42](https://github.com/rh-pvsec/crypto-scanner-tasks/pull/42)). Needs a
+   maintainer to confirm it can be dropped.
 
 2. **May CBOM metadata enrichment fail the TaskRun?**
    As written, `update-cbom-metadata` runs under `set -euo pipefail` and sits
@@ -348,14 +375,14 @@ the reader how far the question has got.
 
 4. **What is the policy on PR bodies, linked issues, and Jira references, and
    which paths genuinely require human sign-off?**
-   There is no `CODEOWNERS`, no pull request template, and no stated policy in
-   this repository, so automated findings of the form "the PR body is empty and
-   no issue is linked, therefore a human must approve" currently have no
-   in-repo rule to appeal to. Writing the real policy down here — whatever it
-   turns out to be — is the useful outcome. This entry records only that no
-   in-repo authorization rule exists yet; nothing in this file authorizes a
-   merge, and no branch-name or commit-scope convention substitutes for human
-   approval unless a maintainer states otherwise here.
+   There is no `CODEOWNERS`, no pull request template, and no stated
+   authorization policy in this repository. What the policy should be, and
+   which paths genuinely require human sign-off, is undecided; writing it
+   down here — whatever it turns out to be — is the useful outcome. This
+   entry records only that no in-repo authorization rule exists yet; nothing
+   in this file authorizes a merge, and no branch-name or commit-scope
+   convention substitutes for human approval unless a maintainer states
+   otherwise here.
 
 ## Related
 
