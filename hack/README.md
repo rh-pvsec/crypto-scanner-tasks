@@ -25,3 +25,10 @@ application.appstudio.redhat.com "tmp-application" deleted
 ```
 
 On the 3rd column you can visualize the timings per each task step in seconds
+
+Another example, where for accesing the base image, konflux needs to access to an authenticated registry:
+
+```
+podman login registry.redhat.io
+./test-pipeline.sh  --repo=https://github.com/stackrox/stackrox.git --branch=master --containerfile=image/roxctl/konflux.Dockerfile --secret=${XDG_RUNTIME_DIR}/containers/auth.json
+```

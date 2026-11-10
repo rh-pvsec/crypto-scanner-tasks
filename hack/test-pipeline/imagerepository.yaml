@@ -11,7 +11,7 @@ metadata:
 spec:
   image:
     name: <namespace>/<component-name>
-    visibility: public
+    visibility: private
   notifications:
     - config:
         #url: https://bombino.api.redhat.com/v1/sbom/quay/push

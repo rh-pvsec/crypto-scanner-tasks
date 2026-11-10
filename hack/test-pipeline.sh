@@ -2,14 +2,15 @@
 #set -x
 EXECDIR="$(dirname $(realpath $0))"
 WORKDIR="$(mktemp -d /tmp/$(basename $0).XXXX)"
-USAGE="Usage: $0 --repo <repo_url> [--branch <branch>] [--count <number>] [--containerfile <Containerfile>]"
+USAGE="Usage: $0 --repo <repo_url> [--branch <branch>] [--count <number>] [--containerfile <Containerfile>] [ --secret <dockerfile.json>]"
 
 export SOURCE_URL=""
 export TARGET_BRANCH="main"
 export CONTAINERFILE="Containerfile"
 export C=1
+export SECRET=""
 
-OPTS=$(getopt -o r:b:c:d:h --long repo:,branch:,count:,containerfile:,help -n "$0" -- "$@")
+OPTS=$(getopt -o r:b:c:d:h --long repo:,branch:,count:,containerfile:,secret:,help -n "$0" -- "$@")
 
 if [ $? != 0 ]; then
     echo "Error processing arguments." >&2
@@ -34,6 +35,10 @@ while true; do
       ;;
     -c | --count )
       C="$2"
+      shift 2
+      ;;
+    -s | --secret )
+      SECRET="$2"
       shift 2
       ;;
 
@@ -73,11 +78,12 @@ export APPLICATION_NAME=tmp-application
 export COMPONENT_NAME=tmp-component
 export NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}')
 
-# remove tmp-application in case previous run was interrupted
-kubectl delete application/tmp-application 2> /dev/null 
+# Silently remove objects in case a previous run was interrupted
+kubectl delete application/tmp-application 2> /dev/null
 if [ $? == 0 ]; then
     sleep 3
 fi
+kubectl delete secret/tmp-component-secret-pull 2> /dev/null
 
 # populate temporary konflux objects app/component/imageregistry
 yq '.metadata.name = env(APPLICATION_NAME), .spec.displayName = env(APPLICATION_NAME)' ${EXECDIR}/test-pipeline/application.yaml | kubectl create -f -
@@ -100,12 +106,17 @@ yq \
     ' \
     ${EXECDIR}/test-pipeline/imagerepository.yaml | kubectl create -f -
 
+if [ -n "${SECRET}" ]; then
+    kubectl create secret generic ${COMPONENT_NAME}-secret-pull --from-file=.dockerconfigjson=${SECRET} --type=kubernetes.io/dockerconfigjson
+    kubectl patch serviceaccount build-pipeline-${COMPONENT_NAME} -p '{"secrets": [{"name": "tmp-component-secret-pull"}]}'
+fi
+
 export PR_FILE=component-push.yaml
 cp ${EXECDIR}/test-pipeline/${PR_FILE} ${WORKDIR}/
 
 pushd $WORKDIR > /dev/null
 
-TR=()
+PR=()
 # iterate over the amount of pipelines we want to trigger
 for i in $(seq 1 $C); do
     export i
@@ -181,4 +192,7 @@ done
 
 popd > /dev/null
 kubectl delete application/${APPLICATION_NAME}
+if [ -n "${SECRET}" ]; then
+    kubectl delete secret/${COMPONENT_NAME}-secret-pull
+fi
 rm -rf ${WORKDIR}
