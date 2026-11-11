@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.2.2"
+    app.kubernetes.io/version: "0.3.0"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -46,6 +46,8 @@ spec:
       type: string
       default: ""
   results:
+    - name: CBOM_BLOB_URL
+      description: Digest-qualified reference to the attached cbom.json blob. Empty when upload is skipped.
     - name: TEST_OUTPUT
       description: Tekton task test output.
   volumes:
@@ -331,6 +333,8 @@ spec:
         #!/usr/bin/env bash
         set -euo pipefail
 
+        : > "$(results.CBOM_BLOB_URL.path)"
+
         if [ -z "${IMAGE_URL}" ] || [ -z "${IMAGE_DIGEST}" ]; then
           echo 'No image-url or image-digest param provided. Skipping upload.'
           exit 0
@@ -358,9 +362,17 @@ spec:
           echo "Selecting auth"
           select-oci-auth "$IMAGE_URL" >"$HOME/auth.json"
           echo "Attaching to ${IMAGE_URL}"
-          if ! retry oras attach --no-tty --registry-config "$HOME/auth.json" --artifact-type "${MEDIA_TYPE}" "${IMAGE_URL}@${IMAGE_DIGEST}" "${UPLOAD_FILE}:${MEDIA_TYPE}"; then
+          if ! CBOM_REFERENCE=$(retry oras attach --no-tty --registry-config "$HOME/auth.json" \
+            --artifact-type "${MEDIA_TYPE}" \
+            --format go-template --template '{{.reference}}' \
+            "${IMAGE_URL}@${IMAGE_DIGEST}" "${UPLOAD_FILE}:${MEDIA_TYPE}"); then
             echo "Failed to attach ${UPLOAD_FILE} to ${IMAGE_URL}"
             exit 1
           fi
+
+          # ORAS uploads the file unchanged, so its SHA-256 is the blob digest.
+          CBOM_DIGEST=$(sha256sum "${UPLOAD_FILE}" | cut -d ' ' -f 1)
+          printf '%s@sha256:%s' "${CBOM_REFERENCE%@*}" "${CBOM_DIGEST}" \
+            > "$(results.CBOM_BLOB_URL.path)"
         done
         echo "Task $(context.task.name) completed."
