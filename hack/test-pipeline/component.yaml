@@ -1,0 +1,20 @@
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Component
+metadata:
+  name: <component-name>
+  #namespace: <namespace>
+  annotations:
+    build.appstudio.openshift.io/request: configure-pac
+    build.appstudio.openshift.io/pipeline: '{"name":"docker-build-oci-ta","bundle":"latest"}'
+    git-provider: gitlab
+    git-provider-url: https://gitlab.cee.redhat.com
+spec:
+  application: <owning application name>
+  componentName: <component-name>
+  source:
+    git:
+      url: https://gitlab.cee.redhat.com/your_org/your_repo.git
+      revision: main
+      context: ./
+      dockerfileUrl: Containerfile
+  #containerImage: <oci-repository-to-push-image-to>
