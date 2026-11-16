@@ -1,8 +1,13 @@
 #!/bin/bash
 
 EXECDIR="$(dirname $(realpath $0))"
-WORKDIR="$(mktemp -d /tmp/$(basename $0).XXXX)"
 USAGE="Usage: $0 --repo <repo_url> [--branch <branch>] [--count <number>] [--containerfile <Containerfile>] [ --secret <dockerfile.json>]"
+
+# Created once the arguments have been validated, so that --help and the
+# precondition checks below do not leave a temporary directory behind.
+WORKDIR=""
+# Overall deadline for a single TaskRun to reach a terminal state.
+WAIT_TIMEOUT_SECONDS=3600
 
 export SOURCE_URL=""
 export TARGET_BRANCH="main"
@@ -81,6 +86,45 @@ fi
 export APPLICATION_NAME=tmp-application
 export COMPONENT_NAME=tmp-component
 export NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}')
+if [ -z "$NAMESPACE" ]; then
+    echo "Error: No namespace is set in the current kubectl context."
+    echo "Please choose one, e.g. kubectl config set-context --current --namespace=<namespace>"
+    exit 1
+fi
+
+# Only remove what we actually got as far as creating.
+APP_CREATED=0
+SECRET_CREATED=0
+CLEANUP_DONE=0
+
+# shellcheck disable=SC2329  # invoked indirectly by the traps installed below
+cleanup() {
+    # The signal handlers below exit, which fires the EXIT trap in turn, so
+    # make sure the body only ever runs once.
+    if [ "$CLEANUP_DONE" != 0 ]; then
+        return 0
+    fi
+    CLEANUP_DONE=1
+
+    if [ "$APP_CREATED" != 0 ]; then
+        kubectl delete --ignore-not-found "application/${APPLICATION_NAME}"
+    fi
+    if [ "$SECRET_CREATED" != 0 ]; then
+        kubectl delete --ignore-not-found "secret/${COMPONENT_NAME}-secret-pull"
+    fi
+    if [ -n "$WORKDIR" ] && [ -d "$WORKDIR" ]; then
+        rm -rf "$WORKDIR"
+    fi
+}
+
+# Installed before anything is created so that every exit path below -- including
+# a failed PipelineRun and Ctrl-C -- releases the temporary directory and the
+# cluster objects.
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT
+trap 'cleanup; exit 143' TERM
+
+WORKDIR="$(mktemp -d "/tmp/$(basename "$0").XXXX")"
 
 # Silently remove objects in case a previous run was interrupted
 kubectl delete application/tmp-application 2> /dev/null
@@ -90,6 +134,7 @@ fi
 kubectl delete secret/tmp-component-secret-pull 2> /dev/null
 
 # populate temporary konflux objects app/component/imageregistry
+APP_CREATED=1
 yq '.metadata.name = env(APPLICATION_NAME), .spec.displayName = env(APPLICATION_NAME)' ${EXECDIR}/test-pipeline/application.yaml | kubectl create -f -
 yq \
     '
@@ -111,6 +156,7 @@ yq \
     ${EXECDIR}/test-pipeline/imagerepository.yaml | kubectl create -f -
 
 if [ -n "${SECRET}" ]; then
+    SECRET_CREATED=1
     kubectl create secret generic ${COMPONENT_NAME}-secret-pull --from-file=.dockerconfigjson=${SECRET} --type=kubernetes.io/dockerconfigjson
     kubectl patch serviceaccount build-pipeline-${COMPONENT_NAME} -p '{"secrets": [{"name": "tmp-component-secret-pull"}]}'
 fi
@@ -154,6 +200,7 @@ for i in $(seq 1 $C); do
 done
 
 # for each pipeline review the sast-crypto-scan taskRun status
+FAILED=0
 for pr in "${PR[@]}"; do
     tr="${pr}-sast-crypto-scan"
     echo "Waiting for TaskRun/${tr} to be created..."
@@ -169,13 +216,28 @@ for pr in "${PR[@]}"; do
         sleep 1
     done
     echo "⏳ TaskRun initialized. Waiting for execution to finish..."
-    kubectl wait --for=condition=Succeeded --timeout=1h taskrun/${tr}
+    # Poll for either terminal state rather than using
+    # 'kubectl wait --for=condition=Succeeded', which only returns once the
+    # condition turns True and so blocks for the whole timeout on a TaskRun
+    # that has already failed.
+    DEADLINE=$(( $(date +%s) + WAIT_TIMEOUT_SECONDS ))
+    STATUS=""
+    while true; do
+        STATUS=$(kubectl get taskrun/"${tr}" -o jsonpath='{.status.conditions[?(@.type=="Succeeded")].status}')
+        if [ "$STATUS" = "True" ] || [ "$STATUS" = "False" ]; then
+            break
+        fi
+        if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+            echo "⌛ Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for TaskRun ${tr} to finish."
+            break
+        fi
+        sleep 5
+    done
 
-    STATUS=$(kubectl get taskrun/${tr} -o jsonpath='{.status.conditions[?(@.type=="Succeeded")].status}')
-    echo "✅ TaskRun $tr completed successfully!"
-    echo taskRun Step Seconds
     if [ "$STATUS" = "True" ]; then
-        
+        echo "✅ TaskRun $tr completed successfully!"
+        echo taskRun Step Seconds
+
         # high level timing and completion stats
         # kubectl get taskrun $tr -o jsonpath='{range .status}{"Start Time: "}{.startTime}{"\n"}{"Completion Time: "}{.completionTime}{"\n"}{"Succeeded: "}{.conditions[0].status}{"\n"}{"Reason: "}{.conditions[0].reason}{"\n"}{end}'
         # step level timing and completion stats
@@ -195,12 +257,12 @@ for pr in "${PR[@]}"; do
     else
         echo "❌ TaskRun $tr failed!"
         kubectl get taskrun/${tr} -o jsonpath='{.status.conditions[?(@.type=="Succeeded")].message}'
+        FAILED=1
     fi
 done
 
 popd > /dev/null
-kubectl delete application/${APPLICATION_NAME}
-if [ -n "${SECRET}" ]; then
-    kubectl delete secret/${COMPONENT_NAME}-secret-pull
-fi
-rm -rf ${WORKDIR}
+
+# The cluster objects and the temporary directory are removed by the EXIT trap.
+# Report the overall outcome so callers can detect a failed run.
+exit "$FAILED"
