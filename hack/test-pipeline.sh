@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 EXECDIR="$(dirname $(realpath $0))"
 WORKDIR="$(mktemp -d /tmp/$(basename $0).XXXX)"
 USAGE="Usage: $0 --repo <repo_url> [--branch <branch>] [--count <number>] [--containerfile <Containerfile>] [ --secret <dockerfile.json>]"
@@ -12,7 +10,7 @@ export CONTAINERFILE="Containerfile"
 export C=1
 export SECRET=""
 
-OPTS=$(getopt -o r:b:c:d:h --long repo:,branch:,count:,containerfile:,secret:,help -n "$0" -- "$@")
+OPTS=$(getopt -o r:b:c:d:hv --long repo:,branch:,count:,containerfile:,secret:,help,verbose -n "$0" -- "$@")
 
 if [ $? != 0 ]; then
     echo "Error processing arguments." >&2
@@ -44,6 +42,10 @@ while true; do
       shift 2
       ;;
 
+    -v | --verbose )
+      set -x
+      shift 1
+      ;;
     -h | --help )
       echo $USAGE
       exit 0
