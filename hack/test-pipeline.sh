@@ -1,5 +1,7 @@
 #!/bin/bash
-#set -x
+
+set -x
+
 EXECDIR="$(dirname $(realpath $0))"
 WORKDIR="$(mktemp -d /tmp/$(basename $0).XXXX)"
 USAGE="Usage: $0 --repo <repo_url> [--branch <branch>] [--count <number>] [--containerfile <Containerfile>] [ --secret <dockerfile.json>]"
@@ -142,6 +144,10 @@ for i in $(seq 1 $C); do
         $PR_FILE \
         > ${PR_FILE}-$i
         PR_NAME=$(kubectl create -f ${PR_FILE}-$i -o jsonpath='{.metadata.name}')
+        if [ $? != 0 ]; then
+            echo "Error creating pipeline." >&2
+            exit 1
+        fi
         PR+=("${PR_NAME}")
 done
 
