@@ -45,6 +45,14 @@ spec:
       description: Digest of the image to scan.
       type: string
       default: ""
+    - name: FORCE_CBOM
+      description: Force CBOM generation even if enable-cbom-generation-task is false or not set in the cluster-config ConfigMap.
+      type: string
+      default: "false"
+    - name: FORCE_RULES_IMAGE
+      description: Override the additional rules image regardless of the cluster-config ConfigMap value.
+      type: string
+      default: ""
   results:
     - name: CBOM_BLOB_URL
       description: Digest-qualified reference to the attached cbom.json blob. Empty when upload is skipped.
@@ -105,24 +113,35 @@ spec:
         requests:
           cpu: 100m
           memory: 256Mi
+      env:
+        - name: FORCE_CBOM
+          value: $(params.FORCE_CBOM)
+        - name: FORCE_RULES_IMAGE
+          value: $(params.FORCE_RULES_IMAGE)
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
 
-        ENABLE_CBOM=$(oc get configmap cluster-config -n konflux-info \
-          -o jsonpath='{.data.enable-cbom-generation-task}' 2>/dev/null || echo "")
+        if [[ "${FORCE_CBOM}" != "true" ]]; then
+          ENABLE_CBOM=$(oc get configmap cluster-config -n konflux-info \
+            -o jsonpath='{.data.enable-cbom-generation-task}' 2>/dev/null || echo "")
 
-        if [[ "${ENABLE_CBOM}" != "true" ]]; then
-          echo "CBOM generation task is not enabled on this cluster (enable-cbom-generation-task='${ENABLE_CBOM}'). Skipping proprietary rules."
-          exit 0
+          if [[ "${ENABLE_CBOM}" != "true" ]]; then
+            echo "CBOM generation task is not enabled on this cluster (enable-cbom-generation-task='${ENABLE_CBOM}'). Skipping proprietary rules."
+            exit 0
+          fi
         fi
 
-        ADDITIONAL_RULES_IMAGE=$(oc get configmap cluster-config -n konflux-info \
-          -o jsonpath='{.data.additional-cbom-generation-rules-image}' 2>/dev/null || echo "")
+        if [[ -n "${FORCE_RULES_IMAGE}" ]]; then
+          ADDITIONAL_RULES_IMAGE="${FORCE_RULES_IMAGE}"
+        else
+          ADDITIONAL_RULES_IMAGE=$(oc get configmap cluster-config -n konflux-info \
+            -o jsonpath='{.data.additional-cbom-generation-rules-image}' 2>/dev/null || echo "")
 
-        if [[ -z "${ADDITIONAL_RULES_IMAGE}" ]]; then
-          echo "No additional rules image configured (additional-cbom-generation-rules-image not set). Using only open-source rules."
-          exit 0
+          if [[ -z "${ADDITIONAL_RULES_IMAGE}" ]]; then
+            echo "No additional rules image configured (additional-cbom-generation-rules-image not set). Using only open-source rules."
+            exit 0
+          fi
         fi
 
         REGISTRY_HOSTNAME=${ADDITIONAL_RULES_IMAGE%%/*}
