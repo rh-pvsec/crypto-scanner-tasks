@@ -2,6 +2,15 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.3.2
+
+### Changed
+
+- Restore the `limits.cpu` ceiling of "8" on the `rh-crypto-scanner` step, which
+  0.3.1 dropped while raising `requests.cpu` to "4". The request is unchanged;
+  "8" is the ceiling that 0.2.1 through 0.3.0 shipped. The sizing record for
+  every step now lives in `docs/compute-resources.md`.
+
 ## 0.3.1
 
 ### Changed

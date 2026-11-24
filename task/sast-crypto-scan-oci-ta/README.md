@@ -24,6 +24,12 @@ It reports crypto algorithms in a CycloneDX format (cbom.json).
 |CBOM_BLOB_URL|Digest-qualified reference (`repository@sha256:<digest>`) to the attached `cbom.json` blob. Empty when upload is skipped.|
 |TEST_OUTPUT|Tekton task test output.|
 
+## Compute resources
+
+Every step declares requests and limits. What the values are based on, and the
+rules a change to them has to satisfy, are recorded in
+[docs/compute-resources.md](../../docs/compute-resources.md).
+
 ## Source repository for image
 
 <https://github.com/rh-pvsec/crypto-finder-image>

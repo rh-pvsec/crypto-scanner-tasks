@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -82,6 +82,8 @@ spec:
           name: trusted-ca
           readOnly: true
           subPath: ca-bundle.crt
+      # Sizing basis: docs/compute-resources.md
+      # resource-check: no-cpu-limit - sub-core request for a short artifact-restore step
       computeResources:
         limits:
           memory: 512Mi
@@ -99,6 +101,8 @@ spec:
         - name: bound-token
           mountPath: /var/run/secrets/tokens
           readOnly: true
+      # Sizing basis: docs/compute-resources.md
+      # resource-check: no-cpu-limit - sub-core request for a short network-bound step
       computeResources:
         limits:
           memory: 256Mi
@@ -181,8 +185,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.annotations['pipelinesascode.tekton.dev/log-url']
+      # Sizing basis: docs/compute-resources.md
       computeResources:
         limits:
+          cpu: "8"
           memory: 8Gi
         requests:
           cpu: "4"
@@ -299,6 +305,8 @@ spec:
             --image-digest "$IMAGE_DIGEST" \
             --cbom-path "$CBOM_FILE"
         done
+      # Sizing basis: docs/compute-resources.md
+      # resource-check: no-cpu-limit - sub-core request for a short metadata-rewrite step
       computeResources:
         limits:
           memory: 512Mi
@@ -323,6 +331,8 @@ spec:
           value: $(params.image-digest)
         - name: SKIP_SBOM_GENERATION
           value: $(params.SKIP_SBOM_GENERATION)
+      # Sizing basis: docs/compute-resources.md
+      # resource-check: no-cpu-limit - sub-core request for a short registry-upload step
       computeResources:
         limits:
           memory: 256Mi

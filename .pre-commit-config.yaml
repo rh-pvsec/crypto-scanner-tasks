@@ -3,3 +3,13 @@ repos:
     rev: v8.30.1
     hooks:
       - id: gitleaks
+  - repo: local
+    hooks:
+      - id: check-compute-resources
+        name: check computeResources in task definitions
+        description: Enforce the requests/limits rules in docs/compute-resources.md
+        entry: hack/check-compute-resources.py
+        language: python
+        additional_dependencies: ["PyYAML>=6.0"]
+        files: ^(task/.*\.ya?ml|hack/check-compute-resources\.py)$
+        pass_filenames: false
