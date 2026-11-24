@@ -4,9 +4,9 @@
 
 ## 0.3.1
 
-### Added
+### Changed
 
-- Tune compute resources in used-trusted-artifacts and rh-crypto-scanner steps.
+- Tune compute resources in used-trusted-artifact and rh-crypto-scanner steps.
 
 ## 0.3.0
 
