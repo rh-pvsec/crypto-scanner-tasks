@@ -162,7 +162,7 @@ spec:
           memory: 8Gi
         requests:
           cpu: "4"
-          memory: 1Gi
+          memory: 2Gi
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
