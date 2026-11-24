@@ -12,11 +12,14 @@ roles:
 allowed_remote_resources:
     - https://raw.githubusercontent.com/fullsend-ai/fullsend/
     - https://raw.githubusercontent.com/fullsend-ai/agents/
-create_issues:
-    allow_targets:
-        repos:
-            - rh-pvsec/crypto-scanner-tasks
-            - fullsend-ai/fullsend
+
+tracker:
+    github:
+        allowed_targets:
+            orgs:
+                - rh-pvsec
+            repos:
+                - rh-pvsec/crypto-scanner-tasks
 inference:
     project: it-gcp-pvsec-fullsend
     region: global
