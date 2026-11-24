@@ -1,5 +1,6 @@
 # crypto-scanner-tasks
 
+Test
 Tekton tasks for detecting cryptographic assets in source code via static analysis.
 
 These tasks use [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) to scan application source and report findings in CycloneDX format (cbom.json).
