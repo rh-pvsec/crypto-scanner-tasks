@@ -35,13 +35,24 @@ inference:
 # consequences were accepted:
 #
 #   1. Unregistered third-party bots are denied before the trigger is even
-#      evaluated. On non-label events the CEL path looks up the actor's
-#      fullsend role, and a bot with no registered role -- or a failed
-#      lookup -- is skipped. Nothing here registers Konflux/MintMaker or
-#      Renovate, so the mere presence of this key already excludes them on
-#      opened/synchronized. The explicit author clauses below are therefore
-#      very likely redundant for that path; they are kept because they also
-#      cover the label path, which skips the bot-role lookup entirely.
+#      evaluated. On non-label events the CEL path looks up the *actor's*
+#      fullsend role, and a bot with no registered role — or a failed
+#      lookup — is skipped. Nothing here registers Konflux/MintMaker or
+#      Renovate, so that denial alone keeps review off opened/synchronized/
+#      marked_ready events those bots send themselves.
+#
+#      It is keyed on the actor, not the author, so it stops helping the
+#      moment a human acts. When a human pushes to, or marks ready, a
+#      Konflux-authored PR, the first disjunct's author clause below is the
+#      only thing skipping the review — that gap is exactly what issue #77
+#      asked this change to close, so the clause is load-bearing rather
+#      than redundant.
+#
+#      The label path skips the bot-role lookup entirely, and the author
+#      clause there matches only the single Konflux login spelled out
+#      below. A PR authored by any other unregistered bot — Renovate
+#      proper, or a MintMaker instance running under a different login —
+#      still dispatches a paid review when it acquires `ready-for-review`.
 #   2. A push from the fix agent no longer starts a re-review, so the
 #      review -> fix -> re-review loop is off until
 #      https://github.com/fullsend-ai/fullsend/issues/8329 ships. This is
@@ -71,17 +82,26 @@ agents:
     #     it is the pusher and on `label_changed` it is the labeller. Author
     #     is the right test: a human pushing to, or labelling, a
     #     Konflux-authored PR should still not trigger a paid review.
-    #   - The `!has(...)` guard is required. `state.change_proposal` is
-    #     absent on surfaces that carry no PR, and reading a missing key
-    #     raises an evaluation error, which counts as "no match" -- that
-    #     would silently disable review altogether. Written this way it
-    #     fails open (review runs) rather than closed.
+    #   - The `!has(...)` guard is defence-in-depth, not a requirement.
+    #     Both author clauses already sit behind
+    #     `event.entity.kind == "change_proposal"` and a transition-kind
+    #     gate, and the GitHub adapter populates `state.change_proposal`
+    #     for every PR event, so the key is present wherever the clause
+    #     actually runs. (The upstream example this follows guards a
+    #     `work_item`-gated trigger, where it genuinely can be absent.)
+    #     It is kept because reading a missing key raises an evaluation
+    #     error that counts as "no match" for the disjunct it sits in;
+    #     written this way that disjunct fails open (review runs) rather
+    #     than closed. The independent `/fs-review` disjunct below is
+    #     unaffected either way.
     #   - The bot id is cluster-bound: `kflux-prd-rh02` names the Konflux
     #     cluster this repo is onboarded to. A cluster migration renames the
-    #     bot and these clauses will silently stop matching. Consequence 1
-    #     above is what actually keeps reviews off opened/synchronized, so a
-    #     stale id here is not by itself a regression -- but the label path
-    #     would start dispatching again.
+    #     bot and these clauses will silently stop matching. The
+    #     actor-keyed denial in consequence 1 would still cover
+    #     opened/synchronized/marked_ready events the bot sends itself,
+    #     but a stale id here re-enables dispatch on the label path and
+    #     on any human-sent event against a Konflux-authored PR. Update
+    #     it together with the cluster.
     trigger: >-
       (
         (event.entity.kind == "change_proposal"
