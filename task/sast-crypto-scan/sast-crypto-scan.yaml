@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.3.0"
+    app.kubernetes.io/version: "0.3.1"
 spec:
   description: >-
     The sast-crypto-scan task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -159,11 +159,10 @@ spec:
               fieldPath: metadata.annotations['pipelinesascode.tekton.dev/log-url']
       computeResources:
         limits:
-          cpu: "8"
-          memory: 4Gi
+          memory: 8Gi
         requests:
-          cpu: "1"
-          memory: 4Gi
+          cpu: "4"
+          memory: 2Gi
       script: |
         #!/usr/bin/env bash
         set -euo pipefail

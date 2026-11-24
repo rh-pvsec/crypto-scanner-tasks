@@ -2,6 +2,12 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.3.1
+
+### Changed
+
+- Tune compute resources in used-trusted-artifact and rh-crypto-scanner steps.
+
 ## 0.3.0
 
 ### Added
