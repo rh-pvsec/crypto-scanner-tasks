@@ -20,6 +20,7 @@ tracker:
                 - rh-pvsec
             repos:
                 - rh-pvsec/crypto-scanner-tasks
+                - fullsend-ai/fullsend
 inference:
     project: it-gcp-pvsec-fullsend
     region: global
