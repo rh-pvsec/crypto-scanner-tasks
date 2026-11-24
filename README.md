@@ -33,7 +33,7 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
         - name: name
           value: sast-crypto-scan-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan-oci-ta:0.3.1
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan-oci-ta:0.3.2
         - name: kind
           value: task
       when:
@@ -76,12 +76,17 @@ A cbom will be uploaded as a trusted artifact.
 
 ## Contributing
 
-After cloning, install the pre-commit hooks to prevent accidental secret leakage:
+After cloning, install the pre-commit hooks. They prevent accidental secret
+leakage and check the `computeResources` blocks of the task definitions:
 
 ```bash
 pip install pre-commit
 pre-commit install
 ```
+
+Changing a compute-resource value has rules of its own: see
+[docs/compute-resources.md](docs/compute-resources.md), which records what every
+value is based on and what a resource-tuning pull request has to carry.
 
 ## Fullsend
 

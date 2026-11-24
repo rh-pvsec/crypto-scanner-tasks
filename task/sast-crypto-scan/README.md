@@ -29,6 +29,12 @@ It reports crypto algorithms in a CycloneDX format (cbom.json).
 |---|---|---|
 |workspace||false|
 
+## Compute resources
+
+Every step declares requests and limits. What the values are based on, and the
+rules a change to them has to satisfy, are recorded in
+[docs/compute-resources.md](../../docs/compute-resources.md).
+
 ## Source repository for image
 
 <https://github.com/rh-pvsec/crypto-finder-image>
