@@ -45,6 +45,9 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
 
 A cbom will be uploaded as a trusted artifact.
 
+> [!NOTE]
+> OpenSource rules are supported on every Konflux cluster, while ScanOSS proprietary rules are only supported on RedHat owned clusters.
+
 ## Contributing
 
 After cloning, install the pre-commit hooks to prevent accidental secret leakage:
