@@ -47,6 +47,20 @@ A cbom will be uploaded as a trusted artifact.
 
 > [!NOTE]
 > OpenSource rules are supported on every Konflux cluster, while ScanOSS proprietary rules are only supported on RedHat owned clusters.
+> Which rules are used on a given cluster is decided as described in [Cluster configuration](#cluster-configuration).
+
+## Cluster configuration
+
+The additional (proprietary) rules are enabled per cluster through the `cluster-config` ConfigMap in the `konflux-info` namespace. The `pull-rules` step reads two keys from it:
+
+|key|purpose|
+|---|---|
+|`enable-cbom-generation-task`|The additional rules image is only pulled when this is `"true"`. Any other value, an unset key, or a failed lookup makes the step skip the pull, unless `FORCE_CBOM` is `"true"`.|
+|`additional-cbom-generation-rules-image`|Pullspec of the additional rules image. Used unless the `FORCE_RULES_IMAGE` parameter overrides it. When neither is set, the scan runs with the open source rules only.|
+
+The pipeline service account therefore needs permission to `get` the `cluster-config` ConfigMap in the `konflux-info` namespace. Without that permission the lookup fails, and the task falls back to the open source rules. That fallback is silent: no warning is recorded and the task still reports `SUCCESS`, so a missing grant is indistinguishable from a fully-ruled scan in the task result.
+
+Neither key controls whether a CBOM is produced. The scan step always runs unless `SKIP_SBOM_GENERATION` is `true`; the metadata and upload steps additionally require `image-url` and `image-digest` to be set. A CBOM is therefore still generated even when `enable-cbom-generation-task` is `false` or unset. The keys only select which rule sets the scan uses.
 
 ## Contributing
 
