@@ -33,7 +33,7 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
         - name: name
           value: sast-crypto-scan-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan-oci-ta:0.3.1
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan-oci-ta:0.3.3
         - name: kind
           value: task
       when:
@@ -47,6 +47,13 @@ A cbom will be uploaded as a trusted artifact.
 
 > [!NOTE]
 > OpenSource rules are supported on every Konflux cluster, while ScanOSS proprietary rules are only supported on RedHat owned clusters.
+
+### Cluster prerequisites for proprietary rules
+
+Proprietary rules are selected by reading the `cluster-config` ConfigMap in the `konflux-info` namespace, so the task's service account needs `get` on that ConfigMap.
+
+* **Lookup succeeds, key absent or empty, or the ConfigMap does not exist** — silent opt-out. The scan uses open-source rules only and the task reports `SUCCESS`.
+* **Lookup fails** (an RBAC denial or an API-server error) — the task reports `result: WARNING` with `warnings: 1` and the scan falls back to open-source rules only. Granting `get` on the `cluster-config` ConfigMap in `konflux-info` restores `SUCCESS`.
 
 ## Contributing
 

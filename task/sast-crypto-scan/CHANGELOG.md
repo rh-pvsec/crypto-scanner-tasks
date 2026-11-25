@@ -6,7 +6,9 @@
 
 ### Fixed
 
-- Distinguish a failed `cluster-config` ConfigMap lookup from an unset key. A lookup that fails (RBAC denial, missing ConfigMap, API-server error) now emits the same warning marker as the quay authentication failure, so the task reports `WARNING` instead of a clean success when it silently falls back to open-source rules only. An absent or empty key is still treated as an opt-out with no warning.
+- Report `WARNING` instead of a clean success when a `cluster-config` lookup fails. An RBAC
+  denial or API-server error now emits a warning marker and the scan falls back to open-source
+  rules only; a missing ConfigMap, or an absent or empty key, stays a silent opt-out.
 
 ## 0.3.2
 
