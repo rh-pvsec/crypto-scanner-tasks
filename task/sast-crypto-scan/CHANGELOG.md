@@ -7,7 +7,8 @@
 ### Changed
 
 - The `pull-rules` step now matches the additional rules image registry against an explicit
-  allowlist (`quay.io`, `quay.io:443` and `image-registry.openshift-image-registry.svc:5000`)
+  allowlist (`quay.io`, `quay.io:443`, `image-registry.openshift-image-registry.svc:5000` and
+  `image-registry.openshift-image-registry.svc.cluster.local:5000`)
   instead of treating every unrecognised host as the in-cluster registry. An unrecognised
   registry now fails with a clear message rather than silently replacing the process trust
   store with the service CA bundle, which made any other registry fail TLS verification.

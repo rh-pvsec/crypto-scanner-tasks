@@ -17,7 +17,7 @@ It reports crypto algorithms in a CycloneDX format (cbom.json).
 |image-digest|Digest of the image to scan.|""|false|
 |image-url|Image URL.|""|false|
 |FORCE_CBOM|Force CBOM generation even if enable-cbom-generation-task is false or not set in the cluster-config ConfigMap.|false|false|
-|FORCE_RULES_IMAGE|Override the additional rules image regardless of the cluster-config ConfigMap value.|""|false|
+|FORCE_RULES_IMAGE|Override the additional rules image regardless of the cluster-config ConfigMap value. Must be a fully qualified pullspec whose registry host is quay.io, quay.io:443, image-registry.openshift-image-registry.svc:5000 or image-registry.openshift-image-registry.svc.cluster.local:5000. Any other registry, or a pullspec with no registry host, fails the task instead of falling back to open-source rules.|""|false|
 
 ## Results
 

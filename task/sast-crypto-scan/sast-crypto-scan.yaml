@@ -46,7 +46,7 @@ spec:
       type: string
       default: "false"
     - name: FORCE_RULES_IMAGE
-      description: Override the additional rules image regardless of the cluster-config ConfigMap value.
+      description: Override the additional rules image regardless of the cluster-config ConfigMap value. Must be a fully qualified pullspec whose registry host is quay.io, quay.io:443, image-registry.openshift-image-registry.svc:5000 or image-registry.openshift-image-registry.svc.cluster.local:5000. Any other registry, or a pullspec with no registry host, fails the task instead of falling back to open-source rules.
       type: string
       default: ""
   results:
@@ -139,7 +139,7 @@ spec:
             # Use bounded token with quay.io federated robot account
             ROBOT_ACCOUNT="exd-guild-security+konflux_crypto_rules_pull"
             ;;
-          image-registry.openshift-image-registry.svc:5000)
+          image-registry.openshift-image-registry.svc:5000 | image-registry.openshift-image-registry.svc.cluster.local:5000)
             echo "Using image from internal openshift registry"
             ROBOT_ACCOUNT=""
             # Trust internal ca bundle to connect to internal openshift registry
@@ -147,7 +147,7 @@ spec:
             ;;
           *)
             echo "Unsupported rules registry '${REGISTRY_HOSTNAME}' in additional rules image '${ADDITIONAL_RULES_IMAGE}'." >&2
-            echo "Supported registries: quay.io, image-registry.openshift-image-registry.svc:5000" >&2
+            echo "Supported registries: quay.io, quay.io:443, image-registry.openshift-image-registry.svc:5000, image-registry.openshift-image-registry.svc.cluster.local:5000" >&2
             exit 1
             ;;
         esac

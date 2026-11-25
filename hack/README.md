@@ -1,5 +1,18 @@
 # Scripts and tools
 
+## test-pull-rules.sh
+
+Regression tests for the `pull-rules` step script that both task flavours share.
+
+The step script is embedded in the task YAML, so the harness extracts it, runs it
+against a stubbed `oc` and `curl`, and asserts the registry dispatch matrix, the
+`--` terminator on the `oc image extract` call, and that the dispatch block is
+byte-identical across the two flavours. No cluster is required:
+
+```bash
+./hack/test-pull-rules.sh
+```
+
 ## test-pipeline.sh
 
 This could be used to trigger n pipelines and measure timings.
