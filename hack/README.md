@@ -1,5 +1,17 @@
 # Scripts and tools
 
+## test-pull-rules.sh
+
+Offline regression tests for the `pull-rules` step of both task flavours. No cluster is needed: the step script is extracted from each task YAML, the Tekton placeholders are pointed at temporary directories, and it runs against a stub `oc`.
+
+It covers the `cluster-config` lookup outcomes (missing ConfigMap, unset or empty key, failed lookup, `FORCE_CBOM`), asserting whether the `warnings` marker that the `rh-crypto-scanner` step reads is written, and checks that the two flavours' scripts differ only in `WARNINGS_DIR`.
+
+```bash
+./hack/test-pull-rules.sh
+```
+
+Requires `python3` with PyYAML.
+
 ## test-pipeline.sh
 
 This could be used to trigger n pipelines and measure timings.

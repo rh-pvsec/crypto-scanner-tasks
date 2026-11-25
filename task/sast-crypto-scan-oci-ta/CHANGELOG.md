@@ -2,6 +2,14 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.3.3
+
+### Fixed
+
+- Report `WARNING` instead of a clean success when a `cluster-config` lookup fails. An RBAC
+  denial or API-server error now emits a warning marker and the scan falls back to open-source
+  rules only; a missing ConfigMap, or an absent or empty key, stays a silent opt-out.
+
 ## 0.3.2
 
 ### Added

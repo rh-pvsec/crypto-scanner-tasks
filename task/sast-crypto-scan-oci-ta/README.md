@@ -24,7 +24,7 @@ It reports crypto algorithms in a CycloneDX format (cbom.json).
 |name|description|
 |---|---|
 |CBOM_BLOB_URL|Digest-qualified reference (`repository@sha256:<digest>`) to the attached `cbom.json` blob. Empty when upload is skipped.|
-|TEST_OUTPUT|Tekton task test output.|
+|TEST_OUTPUT|Tekton task test output. `result` is one of `SKIPPED` (SBOM generation skipped), `ERROR` (no rules detected), `WARNING` or `SUCCESS`. A failed `cluster-config` lookup or a failed quay authentication yields `WARNING` with `warnings: 1`, and the scan falls back to open-source rules only.|
 
 ## Source repository for image
 
