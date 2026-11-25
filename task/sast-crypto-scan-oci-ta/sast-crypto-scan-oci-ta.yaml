@@ -46,7 +46,7 @@ spec:
       type: string
       default: ""
     - name: FORCE_CBOM
-      description: Force the pull of the additional (proprietary) rules image even if enable-cbom-generation-task is false or not set in the cluster-config ConfigMap. This does not control CBOM generation - a CBOM is still generated and uploaded unless SKIP_SBOM_GENERATION is true.
+      description: Force the pull of the additional (proprietary) rules image even if enable-cbom-generation-task is false or not set in the cluster-config ConfigMap. This does not control CBOM generation. A CBOM is still generated unless SKIP_SBOM_GENERATION is true, and upload additionally requires image-url and image-digest.
       type: string
       default: "false"
     - name: FORCE_RULES_IMAGE

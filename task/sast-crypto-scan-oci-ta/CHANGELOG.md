@@ -6,22 +6,14 @@
 
 ### Changed
 
-- Corrected the `FORCE_CBOM` and `FORCE_RULES_IMAGE` parameter descriptions to
-  match the shipped behaviour. `FORCE_CBOM` only bypasses the
-  `enable-cbom-generation-task` gate for the additional (proprietary) rules
-  pull; it does not control whether a CBOM is generated. `FORCE_RULES_IMAGE` is
-  only consulted after that gate passes.
-- Documented in the repository README that the pipeline service account needs
-  `get` on the `cluster-config` ConfigMap in the `konflux-info` namespace, and
-  which keys are read from it.
+- Corrected the `FORCE_CBOM` and `FORCE_RULES_IMAGE` parameter descriptions to match the shipped behaviour. `FORCE_CBOM` only bypasses the `enable-cbom-generation-task` gate for the additional (proprietary) rules pull; it does not control whether a CBOM is generated. `FORCE_RULES_IMAGE` is only consulted after that gate passes or `FORCE_CBOM` is true.
+- Documented in the repository README that the pipeline service account needs `get` on the `cluster-config` ConfigMap in the `konflux-info` namespace, and which keys are read from it.
 
 ## 0.3.2
 
 ### Added
 
-- `FORCE_CBOM` parameter to optionally force the pull of the additional
-  proprietary rules image even if it is disabled in cluster config. It does not
-  affect whether a CBOM is generated.
+- `FORCE_CBOM` parameter to optionally force CBOM generation even if disabled in cluster config.
 - `FORCE_RULES_IMAGE` parameter to optionally override the image used for additional proprietary CBOM rules.
 
 ### Changed
