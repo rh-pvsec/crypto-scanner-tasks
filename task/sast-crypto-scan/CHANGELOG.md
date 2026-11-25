@@ -5,6 +5,7 @@
 ## 0.3.2
 
 ### Added
+
 - `FORCE_CBOM` parameter to optionally force CBOM generation even if disabled in cluster config.
 - `FORCE_RULES_IMAGE` parameter to optionally override the image used for additional proprietary CBOM rules.
 
