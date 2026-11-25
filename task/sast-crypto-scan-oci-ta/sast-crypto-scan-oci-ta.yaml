@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.3.2"
+    app.kubernetes.io/version: "0.3.3"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -144,18 +144,38 @@ spec:
           fi
         fi
 
+        # A pullspec with no "/" has no registry component, so the expansion
+        # below would return the whole value as the hostname.
+        if [[ "${ADDITIONAL_RULES_IMAGE}" != */* ]]; then
+          echo "Additional rules image '${ADDITIONAL_RULES_IMAGE}' has no registry hostname." >&2
+          echo "Expected a fully qualified pullspec, for example 'quay.io/<org>/<repo>:<tag>'." >&2
+          exit 1
+        fi
+
         REGISTRY_HOSTNAME=${ADDITIONAL_RULES_IMAGE%%/*}
 
-        if [[ "${REGISTRY_HOSTNAME}" == "quay.io" ]] ; then
-          echo "Using image from quay.io using robot federated account"
-          # Use bounded token with quay.io federated robot account
-          ROBOT_ACCOUNT="exd-guild-security+konflux_crypto_rules_pull"
-        else
-          echo "Using image from internal openshift registry"
-          ROBOT_ACCOUNT=""
-          # Trust internal ca bundle to connect to internal openshift registry
-          export SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
-        fi
+        # Only registries this task knows how to authenticate against are
+        # accepted. Anything else is rejected rather than being assumed to be
+        # the in-cluster registry, whose branch replaces the process trust
+        # store and would fail TLS verification elsewhere.
+        case "${REGISTRY_HOSTNAME}" in
+          quay.io | quay.io:443)
+            echo "Using image from quay.io using robot federated account"
+            # Use bounded token with quay.io federated robot account
+            ROBOT_ACCOUNT="exd-guild-security+konflux_crypto_rules_pull"
+            ;;
+          image-registry.openshift-image-registry.svc:5000)
+            echo "Using image from internal openshift registry"
+            ROBOT_ACCOUNT=""
+            # Trust internal ca bundle to connect to internal openshift registry
+            export SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+            ;;
+          *)
+            echo "Unsupported rules registry '${REGISTRY_HOSTNAME}' in additional rules image '${ADDITIONAL_RULES_IMAGE}'." >&2
+            echo "Supported registries: quay.io, image-registry.openshift-image-registry.svc:5000" >&2
+            exit 1
+            ;;
+        esac
 
         # If we need authentication
         if [ -n "${ROBOT_ACCOUNT}" ] ; then
@@ -188,7 +208,7 @@ spec:
 
         mkdir /workspace/rules
         echo "About to download image ${ADDITIONAL_RULES_IMAGE}"
-        retry oc image extract "${ADDITIONAL_RULES_IMAGE}" --path="/rules/:/workspace/rules"
+        retry oc image extract --path="/rules/:/workspace/rules" -- "${ADDITIONAL_RULES_IMAGE}"
 
     - name: rh-crypto-scanner
       image: quay.io/exd-guild-security/crypto-finder-image@sha256:455cefb8ccdccbbda049e29e2991859154cd7dad50a3550db6c0adcce1f831a1

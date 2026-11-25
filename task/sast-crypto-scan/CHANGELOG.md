@@ -2,6 +2,24 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.3.3
+
+### Changed
+
+- The `pull-rules` step now matches the additional rules image registry against an explicit
+  allowlist (`quay.io`, `quay.io:443` and `image-registry.openshift-image-registry.svc:5000`)
+  instead of treating every unrecognised host as the in-cluster registry. An unrecognised
+  registry now fails with a clear message rather than silently replacing the process trust
+  store with the service CA bundle, which made any other registry fail TLS verification.
+
+### Fixed
+
+- The `pull-rules` step now rejects an additional rules image with no registry component
+  (for example `crypto-rules-image:latest`), which was previously misread as a registry
+  hostname.
+- The additional rules image pullspec is passed to `oc image extract` after a `--`
+  terminator so that a value beginning with `-` cannot be parsed as a flag.
+
 ## 0.3.2
 
 ### Added
