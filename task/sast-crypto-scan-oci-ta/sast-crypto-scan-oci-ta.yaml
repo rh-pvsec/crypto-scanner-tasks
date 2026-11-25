@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.3.2"
+    app.kubernetes.io/version: "0.3.3"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -122,9 +122,33 @@ spec:
         #!/usr/bin/env bash
         set -euo pipefail
 
+        WARNINGS_DIR="/var/workdir/$(context.task.name)"
+
+        # Record a warning marker that the rh-crypto-scanner step folds into
+        # TEST_OUTPUT, so a scan degraded to open-source rules only is visible
+        # downstream instead of reporting a clean success.
+        warn_and_skip_rules() {
+          echo "WARNING: $*"
+          echo "Falling back to use only Open Source Rules"
+          mkdir -p "${WARNINGS_DIR}"
+          echo -n 1 > "${WARNINGS_DIR}/warnings"
+          exit 0
+        }
+
+        # The exit status of each cluster-config lookup is captured separately
+        # from its output so that a genuine lookup failure (RBAC denial, missing
+        # ConfigMap, API-server error) is not mistaken for an opt-out. An absent
+        # or empty key exits 0 with no output and remains a silent opt-out.
         if [[ "${FORCE_CBOM}" != "true" ]]; then
+          set +e
           ENABLE_CBOM=$(oc get configmap cluster-config -n konflux-info \
-            -o jsonpath='{.data.enable-cbom-generation-task}' 2>/dev/null || echo "")
+            -o jsonpath='{.data.enable-cbom-generation-task}')
+          OC_STATUS=$?
+          set -e
+
+          if [[ "${OC_STATUS}" -ne 0 ]]; then
+            warn_and_skip_rules "Unable to read 'enable-cbom-generation-task' from the cluster-config ConfigMap in the konflux-info namespace (oc exited with ${OC_STATUS})"
+          fi
 
           if [[ "${ENABLE_CBOM}" != "true" ]]; then
             echo "CBOM generation task is not enabled on this cluster (enable-cbom-generation-task='${ENABLE_CBOM}'). Skipping proprietary rules."
@@ -135,8 +159,15 @@ spec:
         if [[ -n "${FORCE_RULES_IMAGE}" ]]; then
           ADDITIONAL_RULES_IMAGE="${FORCE_RULES_IMAGE}"
         else
+          set +e
           ADDITIONAL_RULES_IMAGE=$(oc get configmap cluster-config -n konflux-info \
-            -o jsonpath='{.data.additional-cbom-generation-rules-image}' 2>/dev/null || echo "")
+            -o jsonpath='{.data.additional-cbom-generation-rules-image}')
+          OC_STATUS=$?
+          set -e
+
+          if [[ "${OC_STATUS}" -ne 0 ]]; then
+            warn_and_skip_rules "Unable to read 'additional-cbom-generation-rules-image' from the cluster-config ConfigMap in the konflux-info namespace (oc exited with ${OC_STATUS})"
+          fi
 
           if [[ -z "${ADDITIONAL_RULES_IMAGE}" ]]; then
             echo "No additional rules image configured (additional-cbom-generation-rules-image not set). Using only open-source rules."
@@ -178,11 +209,7 @@ spec:
             mkdir -p -m 0700 "${XDG_RUNTIME_DIR}"
             oc registry login --registry="${REGISTRY_HOSTNAME}" --auth-basic="${ROBOT_ACCOUNT}:${SL_TOKEN}"
           else
-            echo "WARNING: Unable to authenticate to $REGISTRY_HOSTNAME with $ROBOT_ACCOUNT and bound token"
-            echo "Falling back to use only Open Source Rules"
-            mkdir -p "/var/workdir/$(context.task.name)/"
-            echo -n 1 > "/var/workdir/$(context.task.name)/warnings"
-            exit 0
+            warn_and_skip_rules "Unable to authenticate to ${REGISTRY_HOSTNAME} with ${ROBOT_ACCOUNT} and bound token"
           fi
         fi
 
