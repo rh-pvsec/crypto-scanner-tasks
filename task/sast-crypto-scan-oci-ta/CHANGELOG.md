@@ -5,12 +5,14 @@
 ## 0.3.2
 
 ### Added
+
 - `FORCE_CBOM` parameter to optionally force CBOM generation even if disabled in cluster config.
 - `FORCE_RULES_IMAGE` parameter to optionally override the image used for additional proprietary CBOM rules.
 
 ### Changed
 
 - Replaced hardcoded cluster names with dynamic configuration using the `cluster-config` ConfigMap (specifically the `enable-cbom-generation-task` and `additional-cbom-generation-rules-image` values) in the `konflux-info` namespace.
+- Pinned the `crypto-finder-image` step image by digest instead of the mutable `latest` tag, using the `tag@sha256:` reference form already used by the other pinned images.
 
 ## 0.3.1
 
