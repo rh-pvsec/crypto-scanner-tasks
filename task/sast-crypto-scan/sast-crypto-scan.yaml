@@ -165,7 +165,7 @@ spec:
         retry oc image extract "${ADDITIONAL_RULES_IMAGE}" --path="/rules/:/workspace/rules"
 
     - name: rh-crypto-scanner
-      image: quay.io/exd-guild-security/crypto-finder-image@sha256:455cefb8ccdccbbda049e29e2991859154cd7dad50a3550db6c0adcce1f831a1
+      image: quay.io/exd-guild-security/crypto-finder-image:latest@sha256:455cefb8ccdccbbda049e29e2991859154cd7dad50a3550db6c0adcce1f831a1
       workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
       env:
         - name: TARGET_DIRS
