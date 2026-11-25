@@ -2,6 +2,17 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.3.2
+
+### Added
+
+- `FORCE_CBOM` parameter to optionally force CBOM generation even if disabled in cluster config.
+- `FORCE_RULES_IMAGE` parameter to optionally override the image used for additional proprietary CBOM rules.
+
+### Changed
+
+- Replaced hardcoded cluster names with dynamic configuration using the `cluster-config` ConfigMap (specifically the `enable-cbom-generation-task` and `additional-cbom-generation-rules-image` values) in the `konflux-info` namespace.
+
 ## 0.3.1
 
 ### Changed

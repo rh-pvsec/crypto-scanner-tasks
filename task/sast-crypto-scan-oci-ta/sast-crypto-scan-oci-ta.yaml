@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -43,6 +43,14 @@ spec:
       default: ""
     - name: image-digest
       description: Digest of the image to scan.
+      type: string
+      default: ""
+    - name: FORCE_CBOM
+      description: Force CBOM generation even if enable-cbom-generation-task is false or not set in the cluster-config ConfigMap.
+      type: string
+      default: "false"
+    - name: FORCE_RULES_IMAGE
+      description: Override the additional rules image regardless of the cluster-config ConfigMap value.
       type: string
       default: ""
   results:
@@ -105,37 +113,52 @@ spec:
         requests:
           cpu: 100m
           memory: 256Mi
+      env:
+        - name: FORCE_CBOM
+          value: $(params.FORCE_CBOM)
+        - name: FORCE_RULES_IMAGE
+          value: $(params.FORCE_RULES_IMAGE)
       script: |
         #!/usr/bin/env bash
         set -euo pipefail
 
-        CLUSTER=$(oc whoami --show-console | sed -E 's|^https://console-openshift-console\.apps\.([^.:]*)\..*:?.*$|\1|')
-        echo "Running on: $CLUSTER"
+        if [[ "${FORCE_CBOM}" != "true" ]]; then
+          ENABLE_CBOM=$(oc get configmap cluster-config -n konflux-info \
+            -o jsonpath='{.data.enable-cbom-generation-task}' 2>/dev/null || echo "")
 
-        # This unpinned image contain the latest rolling version of the rules
-        IMAGE="crypto-rules-image:latest"
+          if [[ "${ENABLE_CBOM}" != "true" ]]; then
+            echo "CBOM generation task is not enabled on this cluster (enable-cbom-generation-task='${ENABLE_CBOM}'). Skipping proprietary rules."
+            exit 0
+          fi
+        fi
 
-        # There are two ways of accessing the proprietary crypto-rules-image depending on the cluster
-        if [[ "${CLUSTER}" =~ ^(kflux-prd-rh02)$ ]] ; then
+        if [[ -n "${FORCE_RULES_IMAGE}" ]]; then
+          ADDITIONAL_RULES_IMAGE="${FORCE_RULES_IMAGE}"
+        else
+          ADDITIONAL_RULES_IMAGE=$(oc get configmap cluster-config -n konflux-info \
+            -o jsonpath='{.data.additional-cbom-generation-rules-image}' 2>/dev/null || echo "")
+
+          if [[ -z "${ADDITIONAL_RULES_IMAGE}" ]]; then
+            echo "No additional rules image configured (additional-cbom-generation-rules-image not set). Using only open-source rules."
+            exit 0
+          fi
+        fi
+
+        REGISTRY_HOSTNAME=${ADDITIONAL_RULES_IMAGE%%/*}
+
+        if [[ "${REGISTRY_HOSTNAME}" == "quay.io" ]] ; then
           echo "Using image from quay.io using robot federated account"
           # Use bounded token with quay.io federated robot account
-          ADDITIONAL_RULES_IMAGE="quay.io/exd-guild-security/${IMAGE}"
           ROBOT_ACCOUNT="exd-guild-security+konflux_crypto_rules_pull"
-        elif [[ "${CLUSTER}" =~ ^(stone-stage-p01|stone-stg-rh01|kflux-prd-rh03|kflux-prd-rh01|stone-prod-p01|kflux-fedora-01|kflux-ocp-p01|kflux-rhel-p01|kflux-osp-p01|stone-prod-p02|stone-prd-rh01)$ ]] ; then
+        else
           echo "Using image from internal openshift registry"
-          # Use internal mirrored image
-          ADDITIONAL_RULES_IMAGE="image-registry.openshift-image-registry.svc:5000/crypto-scanner/${IMAGE}"
           ROBOT_ACCOUNT=""
           # Trust internal ca bundle to connect to internal openshift registry
           export SSL_CERT_FILE=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
-        else
-          echo "No supported cluster detected"
-          exit 0
         fi
 
         # If we need authentication
         if [ -n "${ROBOT_ACCOUNT}" ] ; then
-          REGISTRY_HOSTNAME=${ADDITIONAL_RULES_IMAGE%%/*}
           TOKEN=$(cat /var/run/secrets/tokens/quay-token)
 
           if [ -z "${TOKEN}" ]; then
@@ -168,7 +191,7 @@ spec:
         retry oc image extract "${ADDITIONAL_RULES_IMAGE}" --path="/rules/:/workspace/rules"
 
     - name: rh-crypto-scanner
-      image: quay.io/exd-guild-security/crypto-finder-image:latest
+      image: quay.io/exd-guild-security/crypto-finder-image@sha256:455cefb8ccdccbbda049e29e2991859154cd7dad50a3550db6c0adcce1f831a1
       workingDir: /var/workdir/source
       env:
         - name: TARGET_DIRS

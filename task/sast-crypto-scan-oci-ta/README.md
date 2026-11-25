@@ -16,6 +16,8 @@ It reports crypto algorithms in a CycloneDX format (cbom.json).
 |caTrustConfigMapName|The name of the ConfigMap to read CA bundle data from.|trusted-ca|false|
 |image-digest|Digest of the image to scan.|""|false|
 |image-url|Image URL.|""|false|
+|FORCE_CBOM|Force CBOM generation even if enable-cbom-generation-task is false or not set in the cluster-config ConfigMap.|false|false|
+|FORCE_RULES_IMAGE|Override the additional rules image regardless of the cluster-config ConfigMap value.|""|false|
 
 ## Results
 
