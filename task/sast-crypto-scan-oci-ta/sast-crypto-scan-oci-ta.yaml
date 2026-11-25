@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.3.2"
+    app.kubernetes.io/version: "0.3.3"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -46,11 +46,11 @@ spec:
       type: string
       default: ""
     - name: FORCE_CBOM
-      description: Force CBOM generation even if enable-cbom-generation-task is false or not set in the cluster-config ConfigMap.
+      description: Force the pull of the additional (proprietary) rules image even if enable-cbom-generation-task is false or not set in the cluster-config ConfigMap. This does not control CBOM generation - a CBOM is still generated and uploaded unless SKIP_SBOM_GENERATION is true.
       type: string
       default: "false"
     - name: FORCE_RULES_IMAGE
-      description: Override the additional rules image regardless of the cluster-config ConfigMap value.
+      description: Override the additional rules image instead of reading additional-cbom-generation-rules-image from the cluster-config ConfigMap. Only consulted after the enable-cbom-generation-task gate passes or FORCE_CBOM is true.
       type: string
       default: ""
   results:
