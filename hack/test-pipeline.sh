@@ -80,8 +80,8 @@ fi
 
 export BOMBINO_URL="https://bombino.preprod.api.redhat.com/v1/sbom/quay/push"
 export USER_WORKLOADS="redhat-user-workloads-stage"
-if kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | grep -Eq 'prd|prod'; then
-  export ENV="prod"
+if kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' | grep -Eq '(^|[.-])(prd|prod)([.-]|$)'; then
+  # env prod
   export BOMBINO_URL="https://bombino.api.redhat.com/v1/sbom/quay/push"
   export USER_WORKLOADS="redhat-user-workloads"
 fi
