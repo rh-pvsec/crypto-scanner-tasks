@@ -1,5 +1,9 @@
 # Scripts and tools
 
+## upload-tasks.sh
+
+This will upload the tasks in quay.io/exd-guild-security/tekton-catalog/ space where is being used by test-pipeline.sh
+
 ## test-pipeline.sh
 
 This could be used to trigger n pipelines and measure timings.
