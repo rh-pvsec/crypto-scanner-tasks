@@ -19,3 +19,4 @@ spec:
       event: repo_push
       method: webhook
       title: SBOM-event-to-Bombino
+

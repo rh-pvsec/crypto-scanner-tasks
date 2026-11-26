@@ -60,7 +60,7 @@ while true; do
   esac
 done
 
-# Validación del parámetro obligatorio
+# Check mandatory argument
 if [ -z "$SOURCE_URL" ]; then
   echo "Error: The argument --repo is mandatory."
   echo $USAGE
@@ -76,6 +76,14 @@ fi
 if ! kubectl auth whoami < /dev/null &> /dev/null; then \
     echo "Please login into a k8s cluster and choose a namepace"
     exit 1
+fi
+
+export BOMBINO_URL="https://bombino.preprod.api.redhat.com/v1/sbom/quay/push"
+export USER_WORKLOADS="redhat-user-workloads-stage"
+if oc whoami --show-server | grep -Eq 'prd|prod'; then
+  export ENV="prod"
+  export BOMBINO_URL="https://bombino.api.redhat.com/v1/sbom/quay/push"
+  export USER_WORKLOADS="redhat-user-workloads"
 fi
 
 export APPLICATION_NAME=tmp-application
@@ -106,7 +114,8 @@ yq \
     .metadata.name = env(COMPONENT_NAME),
     .metadata.labels."appstudio.redhat.com/application" = env(APPLICATION_NAME),
     .metadata.labels."appstudio.redhat.com/component" = env(COMPONENT_NAME),
-    .spec.image.name = env(NAMESPACE) + "/" + env(COMPONENT_NAME)
+    .spec.image.name = env(NAMESPACE) + "/" + env(COMPONENT_NAME),
+    .spec.notifications[].config.url = env(BOMBINO_URL)
     ' \
     ${EXECDIR}/test-pipeline/imagerepository.yaml | kubectl create -f -
 
@@ -137,6 +146,7 @@ for i in $(seq 1 $C); do
         (.spec.params[] | select (.name == "revision") | .value ) = env(REVISION) |
         (.spec.params[] | select (.name == "git-url") | .value ) = env(SOURCE_URL) |
         (.spec.params[] | select (.name == "dockerfile") | .value ) = env(CONTAINERFILE) |
+        (.spec.params[] | select (.name == "output-image") | .value ) |= sub("{{redhat-user-workloads}}", env(USER_WORKLOADS)) |
         (.spec.params[] | select (.name == "output-image") | .value ) |= sub("{{namespace}}", env(NAMESPACE)) |
         (.spec.params[] | select (.name == "output-image") | .value ) |= sub("{{revision}}", env(REVISION)) |
         (.spec.params[] | select (.name == "output-image") | .value ) |= sub("{{component}}", env(COMPONENT_NAME)) |

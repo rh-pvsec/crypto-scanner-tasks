@@ -22,7 +22,8 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads-stage/{{namespace}}/{{component}}:{{revision}}
+    #value: quay.io/redhat-user-workloads-stage/{{namespace}}/{{component}}:{{revision}}
+    value: quay.io/{{redhat-user-workloads}}/{{namespace}}/{{component}}:{{revision}}
   - name: dockerfile
     value: Containerfile
   pipelineSpec:
