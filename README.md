@@ -33,7 +33,7 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
         - name: name
           value: sast-crypto-scan-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan-oci-ta:0.3.2
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-crypto-scan-oci-ta:0.4.0
         - name: kind
           value: task
       when:
@@ -43,10 +43,10 @@ Include one flavor of this task by editing your pipeline (`.tekton/<component na
         - "false"
 ```
 
-A cbom will be uploaded as a trusted artifact.
+A cbom will be uploaded as a trusted artifact when CBOM generation is enabled on the cluster (see the note below).
 
 > [!NOTE]
-> OpenSource rules are supported on every Konflux cluster, while ScanOSS proprietary rules are only supported on RedHat owned clusters.
+> The whole scan is gated on the cluster: it runs only where `enable-cbom-generation-task` is set to `"true"` in the `cluster-config` ConfigMap of the `konflux-info` namespace, or where the task is invoked with `FORCE_CBOM=true`. On any other cluster the task reports a `SKIPPED` test output and produces no cbom. Once enabled, OpenSource rules are supported on every Konflux cluster, while ScanOSS proprietary rules are only supported on RedHat owned clusters.
 
 ## Contributing
 

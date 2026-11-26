@@ -2,6 +2,17 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.4.0
+
+### Changed
+
+- The `rh-crypto-scanner`, `update-cbom-metadata` and `upload` steps are now skipped, reporting a
+  `SKIPPED` test output, when `enable-cbom-generation-task` is not `true` in the `cluster-config`
+  ConfigMap. Images built on those clusters no longer receive a `cbom.json` attachment and
+  `CBOM_BLOB_URL` is empty. `FORCE_CBOM=true` still bypasses the check.
+- A `cluster-config` ConfigMap that cannot be read is no longer treated as an opt-out: the scan
+  runs with the open-source rules and the task reports a `WARNING` test output.
+
 ## 0.3.2
 
 ### Added
