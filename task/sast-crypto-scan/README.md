@@ -4,6 +4,12 @@ The sast-crypto-scan task uses [crypto-finder-image](https://github.com/rh-pvsec
 
 It reports crypto algorithms in a CycloneDX format (cbom.json).
 
+## Behavior
+
+The scan is gated on the cluster. Unless `FORCE_CBOM` is `true`, the task performs no scan, attaches no `cbom.json`, leaves `CBOM_BLOB_URL` empty and reports `TEST_OUTPUT` result `SKIPPED` when `enable-cbom-generation-task` is not `"true"` in the `cluster-config` ConfigMap of the `konflux-info` namespace. If that ConfigMap cannot be read, the scan still runs with the open-source rules and the task reports `WARNING` rather than treating the failed lookup as an opt-out.
+
+Setting `SKIP_SBOM_GENERATION` to `true` likewise skips the scan, the metadata update and the upload, and reports `TEST_OUTPUT` result `SKIPPED`.
+
 ## Parameters
 
 |name|description|default value|required|

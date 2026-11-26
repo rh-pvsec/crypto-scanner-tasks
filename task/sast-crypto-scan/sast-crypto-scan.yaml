@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.3.3"
+    app.kubernetes.io/version: "0.4.0"
 spec:
   description: >-
     The sast-crypto-scan task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -53,7 +53,11 @@ spec:
     - name: CBOM_BLOB_URL
       description: Digest-qualified reference to the attached cbom.json blob. Empty when upload is skipped.
     - name: TEST_OUTPUT
-      description: Tekton task test output.
+      description: >-
+        Tekton task test output. The "result" field is one of SUCCESS, WARNING, SKIPPED or ERROR.
+        SKIPPED is reported both when SKIP_SBOM_GENERATION is "true" and when the cluster has not
+        set enable-cbom-generation-task to "true" in the cluster-config ConfigMap; in both cases no
+        cbom.json is attached and CBOM_BLOB_URL is empty.
   volumes:
     - name: trusted-ca
       configMap:
@@ -69,8 +73,17 @@ spec:
               audience: openshift
               expirationSeconds: 7200
               path: quay-token
+    # Task-private state shared between the steps of a single TaskRun. Kept off the
+    # caller-supplied workspace so the CBOM kill switch cannot be read from a previous
+    # run on a reused PersistentVolumeClaim, nor planted by another task sharing it.
+    - name: cbom-state
+      emptyDir: {}
   workspaces:
     - name: workspace
+  stepTemplate:
+    volumeMounts:
+      - mountPath: /var/cbom-state
+        name: cbom-state
   steps:
     - name: pull-rules
       image: quay.io/konflux-ci/task-runner:2.1.0@sha256:c34c933c269e2401bb042fe69e2999cf288331b6586d4f4eca9c845270d9b1f9
@@ -98,14 +111,22 @@ spec:
         set -euo pipefail
 
         if [[ "${FORCE_CBOM}" != "true" ]]; then
-          ENABLE_CBOM=$(oc get configmap cluster-config -n konflux-info \
-            -o jsonpath='{.data.enable-cbom-generation-task}' 2>/dev/null || echo "")
+          # Distinguish a genuine opt-out from a failed lookup: an absent key is reported as
+          # success with empty output, while a missing namespace, an RBAC denial or an API
+          # outage is a non-zero exit. Only the former disables CBOM generation.
+          if ENABLE_CBOM=$(oc get configmap cluster-config -n konflux-info \
+            -o jsonpath='{.data.enable-cbom-generation-task}' 2>/dev/null); then
 
-          if [[ "${ENABLE_CBOM}" != "true" ]]; then
-            echo "CBOM generation task is not enabled on this cluster (enable-cbom-generation-task='${ENABLE_CBOM}'). Skipping CBOM generation."
+            if [[ "${ENABLE_CBOM}" != "true" ]]; then
+              echo "CBOM generation task is not enabled on this cluster (enable-cbom-generation-task='${ENABLE_CBOM}'). Skipping CBOM generation."
+              echo -n 1 > /var/cbom-state/cbom-disabled
+              exit 0
+            fi
+          else
+            echo "WARNING: Unable to read enable-cbom-generation-task from the cluster-config ConfigMap in the konflux-info namespace."
+            echo "Cannot confirm the cluster opted out, so continuing with CBOM generation."
             mkdir -p "$(workspaces.workspace.path)/$(context.task.name)"
-            echo -n 1 > "$(workspaces.workspace.path)/$(context.task.name)/cbom-disabled"
-            exit 0
+            echo -n 1 > "$(workspaces.workspace.path)/$(context.task.name)/warnings"
           fi
         fi
 
@@ -233,7 +254,7 @@ spec:
           RESULT="SKIPPED"
           SUCCESSES="0"
           FAILURES="0"
-        elif [ -f "$(workspaces.workspace.path)/$(context.task.name)/cbom-disabled" ]; then
+        elif [ -f /var/cbom-state/cbom-disabled ]; then
           echo "CBOM generation is not enabled on this cluster. Skipping crypto scan."
           RESULT="SKIPPED"
           SUCCESSES="0"
@@ -294,7 +315,7 @@ spec:
           exit 0
         fi
 
-        if [ -f "$(workspaces.workspace.path)/$(context.task.name)/cbom-disabled" ]; then
+        if [ -f /var/cbom-state/cbom-disabled ]; then
           echo 'CBOM generation is not enabled on this cluster. Skipping metadata update.'
           exit 0
         fi
@@ -358,7 +379,7 @@ spec:
           exit 0
         fi
 
-        if [ -f "$(workspaces.workspace.path)/$(context.task.name)/cbom-disabled" ]; then
+        if [ -f /var/cbom-state/cbom-disabled ]; then
           echo 'CBOM generation is not enabled on this cluster. Skipping upload.'
           exit 0
         fi
