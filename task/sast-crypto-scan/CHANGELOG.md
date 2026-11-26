@@ -2,6 +2,17 @@
 
 <!-- Format guidelines: https://keepachangelog.com/en/1.1.0/#how -->
 
+## 0.3.3
+
+### Fixed
+
+- The `rh-crypto-scanner`, `update-cbom-metadata` and `upload` steps no longer run when
+  `enable-cbom-generation-task` is not `true` in the `cluster-config` ConfigMap. Previously the
+  cluster opt-out only skipped the proprietary rules, so a disabled cluster still scanned the
+  source, enriched a CBOM and attached it to the image. `pull-rules` now records the opt-out and
+  the remaining steps honour it, reporting a `SKIPPED` test output. `FORCE_CBOM=true` still
+  bypasses the check, as its description states.
+
 ## 0.3.2
 
 ### Added

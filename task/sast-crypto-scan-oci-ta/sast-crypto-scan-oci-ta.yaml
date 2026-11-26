@@ -7,7 +7,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: "konflux, cbom"
   labels:
-    app.kubernetes.io/version: "0.3.2"
+    app.kubernetes.io/version: "0.3.3"
 spec:
   description: >-
     The sast-crypto-scan-oci-ta task uses [crypto-finder-image](https://github.com/rh-pvsec/crypto-finder-image) tool to perform Static Code Analysis in order to detect crypto assets being used.
@@ -127,7 +127,9 @@ spec:
             -o jsonpath='{.data.enable-cbom-generation-task}' 2>/dev/null || echo "")
 
           if [[ "${ENABLE_CBOM}" != "true" ]]; then
-            echo "CBOM generation task is not enabled on this cluster (enable-cbom-generation-task='${ENABLE_CBOM}'). Skipping proprietary rules."
+            echo "CBOM generation task is not enabled on this cluster (enable-cbom-generation-task='${ENABLE_CBOM}'). Skipping CBOM generation."
+            mkdir -p "/var/workdir/$(context.task.name)/"
+            echo -n 1 > "/var/workdir/$(context.task.name)/cbom-disabled"
             exit 0
           fi
         fi
@@ -255,6 +257,11 @@ spec:
           RESULT="SKIPPED"
           SUCCESSES="0"
           FAILURES="0"
+        elif [ -f "/var/workdir/$(context.task.name)/cbom-disabled" ]; then
+          echo "CBOM generation is not enabled on this cluster. Skipping crypto scan."
+          RESULT="SKIPPED"
+          SUCCESSES="0"
+          FAILURES="0"
         elif [ ${#RULES_ARGUMENTS[@]} -eq 0 ]; then
           echo "Error: no rules detected"
           RESULT="ERROR"
@@ -306,6 +313,11 @@ spec:
 
         if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
           echo 'Skipping SBOM generation. Skipping metadata update.'
+          exit 0
+        fi
+
+        if [ -f "/var/workdir/$(context.task.name)/cbom-disabled" ]; then
+          echo 'CBOM generation is not enabled on this cluster. Skipping metadata update.'
           exit 0
         fi
 
@@ -365,6 +377,11 @@ spec:
 
         if [ "${SKIP_SBOM_GENERATION}" = "true" ]; then
           echo 'Skipping SBOM generation. Skipping upload.'
+          exit 0
+        fi
+
+        if [ -f "/var/workdir/$(context.task.name)/cbom-disabled" ]; then
+          echo 'CBOM generation is not enabled on this cluster. Skipping upload.'
           exit 0
         fi
 
